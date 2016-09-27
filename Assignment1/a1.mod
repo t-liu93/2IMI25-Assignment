@@ -1,6 +1,4 @@
 using CP;
-//using Opl;
-
 tuple Character {
   key string name;
   string type;
@@ -9,51 +7,35 @@ tuple Scene {
   key string name;
   {string} characterSet;
 }
-
-
-
 {string} CharacterTypes = ...;
-
 {string} LeadingCharacters = ...;
-
 int maxNrOfCharacters = ...;
-
 {Scene} Scenes = ...;
 {Character} Characters with type in CharacterTypes = ...;
 
-tuple Actor {
-  key int id;
-  string type;
-  {string} assignedCharacters;
-}
-{Actor} Actors;
-
-dvar int assignment[Scenes][Characters];
-//dvar int assignment[Characters][Actors] in 0..1;
+dvar int assignment[Characters] in 0 .. 10;
 
 dvar int NrOfActorsNeeded;
-execute {
-
-
-  var cardc = Opl.card(Characters);
-  writeln("Number of Characters:", cardc);
-for( var i = 0; i < cardc; i++){
-	var c=Characters[i];
-	writeln(c.name,c.type);
-//	Actors[i]=<i,c.type,{c.name}>;
-}
-
-}
-
-
+//execute {
+//  var cardc = Opl.card(Characters);
+//  writeln("Number of Characters:", cardc);
+//  for ( var i = 0; i < cardc; i++) {
+//    var c = Characters[i];
+//    writeln(c.name, c.type);
+//  }
+//}
 minimize
   NrOfActorsNeeded;
 
-
-
 subject to {
-  forall ( s in Scenes, c in Characters )
-    assignment[s][c] == ( c.name in s.characterSet );
+forall ( leadingc in LeadingCharacters )
+  count ( assignment, assignment[< leadingc >] ) ==1;
+
+forall ( s in Scenes )
+    allDifferent ( all ( c in s.characterSet ) assignment[< c >] );
+
+forall(c1,c2 in Characters)
+  assignment[c1]==assignment[c2]=>c1.type==c2.type;
 
 }
 
