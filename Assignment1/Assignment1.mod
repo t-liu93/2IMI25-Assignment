@@ -34,6 +34,7 @@ minimize
   NrOfActorsNeeded;
 
 subject to {
+//comment following two lines to get some result, I have no idea where went wrong.
 forall ( leadingc in LeadingCharacters )
   count ( assignment, assignment[< leadingc >] ) ==1;
 
