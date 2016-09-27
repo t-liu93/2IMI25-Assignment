@@ -39,13 +39,13 @@ subject to {
   //  count ( assignment, assignment[< leadingc >] ) ==1;
   
 //  version 2, hardcode to test the syntex
-  //count(assignment,assignment[<"Stacy">])==1;
+//  count(assignment,assignment[<"Stacy">])==1;
   
 //  version 3, same as version 1 in logic but runs more loops.
 //  forall(c in Characters)
 //    c.name in LeadingCharacters=>(count(assignment,assignment[c])==1);
 
-//none of above works
+//none of above works, I think the reason is that we're supposed to use an int array indexed by int in count function but what we use is an array indexed by string. 
 	
 //	following one works also make some sense, but I don't think it covers all the cases.
 	allDifferent( all ( c in LeadingCharacters ) assignment[< c >] );
