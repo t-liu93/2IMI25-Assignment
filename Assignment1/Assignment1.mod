@@ -36,7 +36,8 @@ minimize
 subject to {
 //comment following two lines to get some result, I have no idea where went wrong.
 forall ( leadingc in LeadingCharacters )
-  count ( assignment, assignment[< leadingc >] ) ==1;
+  count (  assignment, assignment[ <leadingc> ] ) == 1; //Here assignment[<leadingc>] is not correct
+  
 
 forall ( s in Scenes )
     allDifferent ( all ( c in s.characterSet ) assignment[< c >] );
