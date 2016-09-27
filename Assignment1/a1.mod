@@ -28,8 +28,8 @@ minimize
   NrOfActorsNeeded;
 
 subject to {
-forall ( leadingc in LeadingCharacters )
-  count ( assignment, assignment[< leadingc >] ) ==1;
+//forall ( leadingc in LeadingCharacters )
+//  count ( assignment, assignment[< leadingc >] ) ==1;
 
 forall ( s in Scenes )
     allDifferent ( all ( c in s.characterSet ) assignment[< c >] );
