@@ -17,18 +17,16 @@ tuple Scene {
 int maxNrOfCharacters = ...;
 {Scene} Scenes = ...;
 {Character} Characters with type in CharacterTypes = ...;
+int cardc;
+execute {
+  cardc = Opl.card(Characters);
+  writeln("Number of Characters:", cardc);
+}
 
-dvar int assignment[ct in Characters] in 0 .. 10;
+dvar int assignment[ct in Characters] in 0 .. cardc-1;
 
 dvar int NrOfActorsNeeded;
-//execute {
-//  var cardc = Opl.card(Characters);
-//  writeln("Number of Characters:", cardc);
-//  for ( var i = 0; i < cardc; i++) {
-//    var c = Characters[i];
-//    writeln(c.name, c.type);
-//  }
-//}
+
 minimize
   NrOfActorsNeeded;
 
@@ -48,16 +46,20 @@ subject to {
 //none of above works, I think the reason is that we're supposed to use an int array indexed by int in count function but what we use is an array indexed by string. 
 	
 //	following one works also make some sense, but I don't think it covers all the cases.
-	allDifferent( all ( c in LeadingCharacters ) assignment[< c >] );
+//	allDifferent( all ( c in LeadingCharacters ) assignment[< c >] );
+
+
 
   forall ( s in Scenes )
     allDifferent ( all ( c in s.characterSet ) assignment[< c >] );
 
-  forall ( c1, c2 in Characters )
-    assignment[c1] == assignment[c2] => c1.type == c2.type;
 
-  //forall(c1,c2 in Characters)
-  //  c1.type!=c2.type=>assignment[c1]!=assignment[c2];
+//not really cover the character type constraint
+//  forall ( c1, c2 in Characters )
+//    assignment[c1] == assignment[c2] => c1.type == c2.type;
+
+  forall(c1,c2 in Characters)
+    (c1.type!=c2.type)=>(assignment[c1]!=assignment[c2]);
 }
 
 //fill in from your decision variables.
