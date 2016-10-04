@@ -9,7 +9,7 @@ tuple Character {
   string type;
 }
 tuple Scene {
-  key string name;
+  string name;
   {string} characterSet;
 }
 {string} CharacterTypes = ...;
@@ -33,8 +33,8 @@ minimize
 subject to {
   //comment following two lines to get some result, I have no idea where went wrong.
 //  version 1
-  //forall ( leadingc in LeadingCharacters )
-  //  count ( assignment, assignment[< leadingc >] ) ==1;
+//  forall ( leadingc in LeadingCharacters )
+//    count ( assignment, assignment[< leadingc >] ) ==1;
   
 //  version 2, hardcode to test the syntex
 //  count(assignment,assignment[<"Stacy">])==1;
@@ -48,18 +48,24 @@ subject to {
 //	following one works also make some sense, but I don't think it covers all the cases.
 //	allDifferent( all ( c in LeadingCharacters ) assignment[< c >] );
 
-
-
+// Solve Constraint 3
   forall ( s in Scenes )
     allDifferent ( all ( c in s.characterSet ) assignment[< c >] );
-
+//TODO: Add more constraints
 
 //not really cover the character type constraint
-//  forall ( c1, c2 in Characters )
-//    assignment[c1] == assignment[c2] => c1.type == c2.type;
+  forall ( c1, c2 in Characters )
+    (assignment[c1] == assignment[c2] => c1.type == c2.type) ;
 
-  forall(c1,c2 in Characters)
-    (c1.type!=c2.type)=>(assignment[c1]!=assignment[c2]);
+//  forall(c1, c2 in Characters)
+//    (c1.type == c2.type) => (assignment[c1] == assignment[c2]);
+
+//	forall(c1, c2 in Characters)
+//	  (c1.type == c2.type) + (assignment[c1] == assignment[c2]) <= 2;
+    
+//    allDifferent( all (lc in LeadingCharacters) assignment[ <lc> ]);
+//    forall (lc in LeadingCharacters, c in Characters)
+//      assignment[ <lc> ] != assignment[c];
 }
 
 //fill in from your decision variables.
