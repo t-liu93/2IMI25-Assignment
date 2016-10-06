@@ -1,13 +1,6 @@
-/*********************************************
- * OPL 12.6.3.0 Data
- * Author: liuti
- * Creation Date: Sep 24, 2016 at 4:12:35 PM
- *********************************************/
 CharacterTypes = {"Male", "Female", "Young Male"};
 
 Characters = { 
-
-
 <"John","Male">,
 <"Alex","Male">,
 <"Father","Male">,
@@ -107,4 +100,3 @@ Scenes = {
 <"The Acting Class",{"M. Sweetwater","John"}>,
 <"A Church",{"Man","John"}>
 };
-

@@ -1,6 +1,6 @@
 /*********************************************
  * OPL 12.6.3.0 Model
- * Author: liuti
+ * Author: Tianyu Liu(0937147) and Li Wang(0977456)
  * Creation Date: Sep 24, 2016 at 4:12:35 PM
 *********************************************/
 using CP;
@@ -46,7 +46,7 @@ subject to {
 //none of above works, I think the reason is that we're supposed to use an int array indexed by int in count function but what we use is an array indexed by string. 
 	
 //	following one works also make some sense, but I don't think it covers all the cases.
-//	allDifferent( all ( c in LeadingCharacters ) assignment[< c >] );
+//	allDifferent( all ( c in LeadingCharacters ) assignment[< c >] )
 
 // Solve Constraint 3
   forall ( s in Scenes )
@@ -66,6 +66,12 @@ subject to {
 //    allDifferent( all (lc in LeadingCharacters) assignment[ <lc> ]);
 //    forall (lc in LeadingCharacters, c in Characters)
 //      assignment[ <lc> ] != assignment[c];
+
+//Solve Constraint 4
+//Version 1.0
+	forall (c1 in Characters, c2 in LeadingCharacters)
+//	    c1.name != c2 => assignment[c1] != assignment[ <c2> ];
+		assignment[c1] == assignment[ <c2> ] => c1.name == c2;
 }
 
 //fill in from your decision variables.
