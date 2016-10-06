@@ -22,7 +22,7 @@ execute {
   cardc = Opl.card(Characters);
   writeln("Number of Characters:", cardc);
 }
-
+range characterRange = 0 .. cardc - 1;
 dvar int assignment[ct in Characters] in 0 .. cardc-1;
 
 dvar int NrOfActorsNeeded;
@@ -72,6 +72,11 @@ subject to {
 	forall (c1 in Characters, c2 in LeadingCharacters)
 //	    c1.name != c2 => assignment[c1] != assignment[ <c2> ];
 		assignment[c1] == assignment[ <c2> ] => c1.name == c2;
+		
+//Solve Constraint 7
+//Version 1.0
+	forall (c in characterRange)
+	  count(all(c2 in Characters) assignment[c2], c) <= maxNrOfCharacters;
 }
 
 //fill in from your decision variables.
