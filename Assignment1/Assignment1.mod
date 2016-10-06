@@ -28,8 +28,8 @@ int characterNumbers;//The number of characters provided by dat.
 /* Calculate the number of characters using the dat. */
 execute {
 
-cardc = Opl.card(Characters);
-writeln("Number of Characters:", cardc);
+characterNumbers = Opl.card(Characters);
+writeln("Number of Characters:", characterNumbers);
 
 }
 
@@ -126,11 +126,11 @@ for(var lc in Characters){
 	writeln("Number of leading characters:",lc,assignment[lc]);
 }
 
-  writeln("Actors needed: ", NrOfActorsNeeded);
+  writeln("Actors needed: ", numberOfActorsNeeded);
   for ( var ct in CharacterTypes) {
     writeln(ct, " needed: ", nrOfActorsOfType[ct]);
   }
-  for ( var i = 0; i < NrOfActorsNeeded; i++) {
+  for ( var i = 0; i < numberOfActorsNeeded; i++) {
     writeln("Actor ", i, " plays ", CharactersPlayedByActor[i]);
   }
 }
