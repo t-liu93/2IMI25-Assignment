@@ -1,7 +1,8 @@
 /*********************************************
  * OPL 12.6.3.0 Model
- * Author: Tianyu Liu(0937147) and Li Wang(0977456)
+ * Author (Student Number): Tianyu Liu(0937147) and Li Wang(0977456)
  * Creation Date: Sep 24, 2016 at 4:12:35 PM
+ * Last Modified Date: Oct 7, 2016
 *********************************************/
 using CP;
 
@@ -23,20 +24,30 @@ int maxNrOfCharacters = ...;//A maximum number of character an actor can play, r
 {Scene} Scenes = ...;//Scenes as scene type array, read from dat.
 {Character} Characters with type in CharacterTypes = ...;//Characters with type, read from dat.
 
-int characterNumbers;//The number of characters provided by dat.
-int sceneNumbers;
+int characterNumbers;//The total number of characters provided by dat.
+int sceneNumbers;//The total number of scenes provided by dat.
+int maxNumberOfCharacterOneScene = 0;//Used to set a lower bound
 
-/* Calculate the number of characters using the dat. */
+/* 
+* Some calculations about the variables
+* And runtime configurations
+*/
 execute {
 
-
-  characterNumbers = Opl.card(Characters);
+  characterNumbers = Opl.card(Characters);//Calculate total character number from dat.
   writeln("Number of Characters:", characterNumbers);
-  sceneNumbers = Opl.card(Scenes);
+  
+  sceneNumbers = Opl.card(Scenes);//Calculate total scene number from dat.
   writeln("Number of Scenes:", sceneNumbers);
-}
-
-execute {
+  
+  for (var s in Scenes) {
+    if (Opl.card(s.characterSet) > maxNumberOfCharacterOneScene) 
+    	maxNumberOfCharacterOneScene = Opl.card(s.characterSet);
+  }//Calculate max number of characters in a scene
+  
+  /*
+  * Runtime configuration given in the assignment requirements
+  */
   cp.param.Workers = 1;
   cp.param.TimeLimit = 5;
 }
@@ -52,118 +63,86 @@ dvar int assignment[ct in Characters] in characterRange;
 dexpr int NrOfActorsNeeded = max ( c in Characters ) assignment[c] + 1;//The number of actors needed
 
 minimize
-  NrOfActorsNeeded;
+  NrOfActorsNeeded;//Minimize the number of actors
 
-subject to {
-  //comment following two lines to get some result, I have no idea where went wrong.
-  //  version 1
-  //  forall ( leadingc in LeadingCharacters )
-  //    count ( assignment, assignment[< leadingc >] ) ==1;
-
-  //  version 2, hardcode to test the syntex
-  //  count(assignment,assignment[<"Stacy">])==1;
-
-  //  version 3, same as version 1 in logic but runs more loops.
-  //  forall(c in Characters)
-  //    c.name in LeadingCharacters=>(count(assignment,assignment[c])==1);
-
-  //none of above works, I think the reason is that we're supposed to use an int array indexed by int in count function but what we use is an array indexed by string.
-
-  //  following one works also make some sense, but I don't think it covers all the cases.
-  //  allDifferent( all ( c in LeadingCharacters ) assignment[< c >] )
+subject to {  
+/* Below are the constraints needed */
 
 /*
 * The decision variable assignment should be at least 0, and at most characterNumbers
-  */
+*/
   forall ( c in Characters )
     assignment[c] >= 0 && assignment[c] < characterNumbers;
+    
+/*
+* Constraint 1:
+* Once an actor plays a certain character in a scene for example, 
+* he or she needs to play that character in the whole play. 
+*
+* The decision variable assignment make sure this constraint holds.
+*/
+
+/*
+* Constraint 2:
+* Another constraint is that you cannot have two actors together play a character 
+* as that will confuse the audience. 
+*
+* Decision variable make sure this constraint holds. 
+*/
+
 
 /*
 * Solve constraint 3
 * An actor obviously also cannot play more than one character in the same scene. 
 * Implementation: In one scene, all actors with different characters are different. 
-  */
+*/
   forall ( s in Scenes )
-    allDifferent ( all ( c1 in s.characterSet, c2 in Characters :
-       c1 == c2.name ) assignment[c2] );
+    allDifferent ( all ( c1 in s.characterSet, c2 in Characters : c1 == c2.name ) assignment[c2] );
+    
+/*
+* Solve Constraint 4 v1.0
+* There are furthermore a couple of leading characters and the actors assigned to those characters 
+* cannot play any other character as that would again confuse the audience.
+*/
+  forall ( c1 in Characters, c2 in LeadingCharacters, c3 in Characters : c3.name == c2 && c1.name != c2 )
+    assignment[c1] != assignment[c3];
 
 /*
 * Solve constraint 5
 * There are also parts for males that can only be played by men, 
 * parts for females that can only be played by women, etc. 
-  */
-  //  forall ( c1, c2 in Characters )
-  //    (assignment[c1] == assignment[c2] => c1.type == c2.type) ;
-  //  forall(c1, c2 in Characters)
-  //    (c1.type == c2.type) => (assignment[c1] == assignment[c2]);
-
-  //  forall(c1, c2 in Characters)
-  //    (c1.type == c2.type) + (assignment[c1] == assignment[c2]) <= 2;
-
-  //  forall (c1, c2 in Characters)
-  //    c1.type != c2.type => assignment[c1] != assignment[c2];
-
-  //Do not know why this version returns no value, even it is the same as the first one.
-
-  // Above are discarded versions
+*/
   forall ( c1, c2 in Characters : c1.type != c2.type )
     assignment[c1] != assignment[c2];
-
-/*
-* Solve Constraint 4 v1.0
-* There are furthermore a couple of leading characters and the actors assigned to those characters 
-* cannot play any other character as that would again confuse the audience.
-  */
-  forall ( c1 in Characters, c2 in LeadingCharacters, c3 in Characters :
-     c3.name == c2 && c1.name != c2 )
-    //      c1.name != c2 => assignment[c1] != assignment[ <c2> ];
-    //    assignment[c1] == assignment[ <c2> ] => c1.name == c2;
-    // To avoid using style such as "assignment[<X>]"
-    assignment[c1] != assignment[c3];
 
 /*
 * Solve Constrtaint 6 v1.0
 * Another constraint is that to allow people to change costume, 
 * an actor cannot play one character in one scene and another in the scene that is directly next, 
 * i.e., at least one scene needs to be in between any actor playing two different characters.
-  */
+*/
   forall ( s1, s2 in Scenes : ord ( Scenes, s2 ) == ord ( Scenes, s1 ) + 1 )
-    allDifferent ( all ( c in s1.characterSet union s2.characterSet )
-       assignment[< c >] );
-
-  //Maybe can change statements in forall to avoid using assignment[<X>]
-
-  //Solve Constraint 7
-  //Version 1.0
+    allDifferent ( all ( c in s1.characterSet union s2.characterSet ) assignment[< c >] );
+    
 /*
 * Solve Constraint 7 v1.0
 * A final constraint is that no actor can be assigned to more than a given maximal number of characters, 
 * this as assigning too many characters to an actor will again confuse the audience.
 * Implementation: Iterate all assignments over all characters in the range, 
 * For different characters, the same number (i.e. the same actor) shows should be less or equal than max number.
-  */
+*/
   forall ( c in characterRange )
     count ( all ( c2 in Characters ) assignment[c2], c ) <= maxNrOfCharacters;
 
-/*	  
-*Constraint 6
-* Another constraint is that to allow people to change costume, an actor cannot 
-* play one character in one scene and another in the scene that is directly next,
-* i.e., at least one scene needs to be in between any actor playing two different characters.
-  */
-  forall ( s in 0 .. sceneNumbers - 2 )
-    forall ( c1 in item ( Scenes, s ).characterSet, c2 in item ( Scenes, s + 1 )
-      .characterSet )
-      assignment[< c1 >] == assignment[< c2 >] => c1 == c2;
-  
-
 /*
 * Set constraints about NrOfActorsNeeded
-  */
-  NrOfActorsNeeded >= 0;
+* Use some bounds to increase efficiency 
+*/
+  NrOfActorsNeeded >= maxNumberOfCharacterOneScene;
   NrOfActorsNeeded <= characterNumbers;
 }
-//dexpr int NrOfActorsNeeded = max(c in Characters) assignment[c];
+
+
 //fill in from your decision variables.
 int nrOfActorsOfType[ct in CharacterTypes];
 //a temp variable helps to fill nrOfActorsOfType
@@ -174,7 +153,7 @@ int nrOfActorsOfType[ct in CharacterTypes];
 execute {
   for ( var c in Characters) {
     CharactersPlayedByActor[assignment[c]].add(c);
-  }
+  }//Fill in variable using decision variable
   for ( var cpa in CharactersPlayedByActor) {
     nrOfActorsOfTypeTemp[Opl.first(CharactersPlayedByActor[cpa]).type].add(cpa);
   }
