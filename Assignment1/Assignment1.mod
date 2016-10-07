@@ -24,13 +24,15 @@ int maxNrOfCharacters = ...;//A maximum number of character an actor can play, r
 {Character} Characters with type in CharacterTypes = ...;//Characters with type, read from dat.
 
 int characterNumbers;//The number of characters provided by dat.
+int sceneNumbers;
 
 /* Calculate the number of characters using the dat. */
 execute {
 
-cardc = Opl.card(Characters);
-writeln("Number of Characters:", cardc);
-
+characterNumbers = Opl.card(Characters);
+writeln("Number of Characters:", characterNumbers);
+sceneNumbers=Opl.card(Scenes);
+writeln("Number of Scenes:", sceneNumbers);
 }
 
 range characterRange = 0 .. characterNumbers - 1;//Range of character numbers
@@ -112,6 +114,16 @@ subject to {
 */
 	forall (c in characterRange)
 	  count(all(c2 in Characters) assignment[c2], c) <= maxNrOfCharacters;
+/*	  
+*Constraint 6
+* Another constraint is that to allow people to change costume, an actor cannot 
+* play one character in one scene and another in the scene that is directly next,
+* i.e., at least one scene needs to be in between any actor playing two different characters.
+*/
+forall ( s in 0 .. sceneNumbers - 2 )
+  forall ( c1 in item ( Scenes, s ).characterSet, c2 in item ( Scenes, s + 1 )
+    .characterSet )
+    assignment[< c1 >] == assignment[< c2 >] => c1 == c2;
 }
 
 //fill in from your decision variables.
@@ -122,15 +134,16 @@ int nrOfActorsOfType[ct in CharacterTypes];
 
 execute {
 
+
 for(var lc in Characters){
 	writeln("Number of leading characters:",lc,assignment[lc]);
 }
 
-  writeln("Actors needed: ", NrOfActorsNeeded);
+  writeln("Actors needed: ", numberOfActorsNeeded);
   for ( var ct in CharacterTypes) {
     writeln(ct, " needed: ", nrOfActorsOfType[ct]);
   }
-  for ( var i = 0; i < NrOfActorsNeeded; i++) {
+  for ( var i = 0; i < numberOfActorsNeeded; i++) {
     writeln("Actor ", i, " plays ", CharactersPlayedByActor[i]);
   }
 }
