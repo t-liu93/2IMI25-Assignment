@@ -1,6 +1,7 @@
 /*********************************************
  * OPL 12.6.3.0 Model
- * Author (Student Number): Tianyu Liu(0937147) and Li Wang(0977456)
+ * Author 1: Tianyu Liu (0937147), e-mail: t.liu.1@student.tue.nl
+ * Author 2: Li Wang (0977456), e-mail: l.wang.3@student.tue.nl
  * Creation Date: Sep 24, 2016 at 4:12:35 PM
  * Last Modified Date: Oct 7, 2016
 *********************************************/
