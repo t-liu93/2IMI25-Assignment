@@ -13,7 +13,7 @@
  * Tuples are established according to the xls file structure
  */
  tuple Product {
-    key int productId;
+     key int productId;
      string name; 
  }
  {Product} Products = ...;
@@ -69,7 +69,7 @@
  
  tuple Alternative {
      key string stepId;
-     int alternativeNumber;
+     key int alternativeNumber;
      string resourceId;
      int fixedProcessingTime;
      float variableProcessingTime;
@@ -80,15 +80,15 @@
  
  tuple StorageProduction {
      key string prodStepId;
-     string storageTankId;
+     key string storageTankId;
      string consStepId;
  }
  {StorageProduction} StorageProductions = ...;
  
  tuple SetupMatrix {
       key string setupMatrixId;
-      int fromState;
-      int toState;
+      key int fromState;
+      key int toState;
       int setupTime;
       int setupCost;  
  }
@@ -111,15 +111,28 @@
  }
  
  /*
- * Decision variables and decision expressions goes here
- */ 
+ * Decision variables given by description
+ */
+ dvar int TotalNonDeliveryCost;
+ dvar int TotalProcessingCost;
+ dvar int TotalSetupCost;
+ dvar int TotalTardinessCost;
  //TODO: Add decision variables and decision expressions that we need
  
+ dexpr float WeightedNonDeliveryCost = TotalNonDeliveryCost * 1;
+ dexpr float WeightedProcessingCost = TotalProcessingCost * 1;
+ dexpr float WeightedSetupCost = TotalSetupCost * 1;
+ dexpr float WeightedTardinessCost = TotalTardinessCost * 1;
+ dexpr float sumWeighted = WeightedNonDeliveryCost + 
+                    WeightedProcessingCost + 
+                    WeightedSetupCost +
+                    WeightedTardinessCost;
  /*
  * Here goes the minimize part and subjects.
  */
  //TODO: What we want to minimize and subject 
- 
+ minimize sumWeighted;
+                    
  subject to {
   
  }
@@ -137,7 +150,7 @@
     float nonDeliveryCost;
     float tardinessCost; 
  };
- //TODO: {DemandAssignment} demandAssignments = fill in decision variables
+{DemandAssignment} demandAssignments;//TODO: = fill in decision variables
  
  tuple StepAssignment {
     key string demandId;
@@ -151,7 +164,7 @@
     int endTimeSetup;
     string setupResourceId; 
  };
- //TODO: {StepAssignment} stepAssignments = fill in decision variables
+{StepAssignment} stepAssignments;//TODO: = fill in decision variables
  
  tuple StorageAssignment {
     key string demandId;
@@ -161,10 +174,10 @@
     int quantity;
     string storageTankId; 
  };
- //TODO: {StorageAssignment} storageAssignments = fill in decision variables
+{StorageAssignment} storageAssignments;//TODO: = fill in decision variables
  
  /*
- * There are also some code from desctiption that may helps.
+ * There are also some code from desctiption that may help.
  */
 // {DemandAssignment} demandAssignments = {
 //    <d.demandId,
