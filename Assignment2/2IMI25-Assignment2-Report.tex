@@ -8,8 +8,10 @@
 \usepackage{a4wide,amsmath,amssymb,fancyhdr,graphicx,tabularx,xspace}
 \usepackage{amsthm}
 \usepackage{mathtools,enumerate}
+\usepackage{enumitem}
 
 \DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\parindent = 0pt
 
 
 \newcommand{\myopt}{\mbox{{\sc opt}}\xspace}
@@ -68,6 +70,19 @@
 %------------------------------------------------------------------------------------------------------
 
 \section{Introduction}
+
+This report will discuss the second assignment of 2IMI25 - Constraint Programming course. The assignment is mainly about building a model that can minimize the total weighted processing cost for a food company. 
+\twoline 
+
+This report is divided into three sections. 
+\begin{itemize}
+	\item Introduction \\
+		This section briefly introduces the content of this report. 
+	\item Model Description \\
+		This section introduces the model we built of this assignment in detail, including the detailed description of all data structures, constraints, etc. Also, the reason why we chose a certain constraint is described in this section. 
+	\item Tests \\
+		This section describes the tests we did in building the model. We started from a small test instance and ended up with a large instance. We will explain the data in the tests and the result we got. 
+\end{itemize}
 
 \newpage
 

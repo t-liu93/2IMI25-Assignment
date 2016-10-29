@@ -100,6 +100,8 @@
  }
  {CriterionWeight} CriterionWeights = ...;
  
+ //TODO: Add some more data structures that the calculation needs
+ 
  /*
  * Some execute setting about tests, given in the assignment description. 
  * Using sequential search. 
@@ -117,7 +119,6 @@
  dvar int TotalProcessingCost;
  dvar int TotalSetupCost;
  dvar int TotalTardinessCost;
- //TODO: Add decision variables and decision expressions that we need
  
  dexpr float WeightedNonDeliveryCost = TotalNonDeliveryCost * 1;
  dexpr float WeightedProcessingCost = TotalProcessingCost * 1;
@@ -127,6 +128,7 @@
                     WeightedProcessingCost + 
                     WeightedSetupCost +
                     WeightedTardinessCost;
+//TODO: Add detail of the decision expressions
  /*
  * Here goes the minimize part and subjects.
  */
