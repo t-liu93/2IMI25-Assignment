@@ -120,10 +120,13 @@
  dvar int TotalSetupCost;
  dvar int TotalTardinessCost;
  
- dexpr float WeightedNonDeliveryCost = TotalNonDeliveryCost * 1;
+ dexpr float WeightedNonDeliveryCost = TotalNonDeliveryCost * 
+                item(CriterionWeights, ord(CriterionWeights, <"NonDeliveryCost">)).weight;
+ 
  dexpr float WeightedProcessingCost = TotalProcessingCost * 1;
  dexpr float WeightedSetupCost = TotalSetupCost * 1;
- dexpr float WeightedTardinessCost = TotalTardinessCost * 1;
+ dexpr float WeightedTardinessCost = TotalTardinessCost * 
+                item(CriterionWeights, ord(CriterionWeights, <"TardinessCost">)).weight;;
  dexpr float sumWeighted = WeightedNonDeliveryCost + 
                     WeightedProcessingCost + 
                     WeightedSetupCost +
