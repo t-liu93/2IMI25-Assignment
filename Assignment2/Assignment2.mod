@@ -117,7 +117,25 @@
  */
  //Set an interval dvar to decide whether a demand will be processed or not. 
  dvar interval demandInterval[demand in Demands]
-                optional;
+                optional(0);
+                
+ dvar interval products[demand in Demands][product in Products]
+                optional(demand.productID != product.productId);
+                
+ dvar interval steps[demand in Demands][product in Products][s in Steps]
+                optional(demand.productID != product.productId);
+                
+ dvar interval alternatives[demand in Demands][product in Products][steps in Steps][alternativ in Alternatives]
+                optional((demand.productID != product.productId) || 
+                        (steps.stepId != alternativ.stepId))
+                size ftoi(ceil(alternativ.fixedProcessingTime + 
+                        demand.quantity * alternativ.variableProcessingTime));
+                       
+ dvar sequence resources[resource in Resources] in
+                all(demand in Demands, product in Products, 
+                s in Steps, alternativ in Alternatives : 
+                resource.resourceId == alternativ.resourceId)
+                alternatives[demand][product][s][alternativ];
  
  //Non delivery cost if a demand is not present
  dexpr float TotalNonDeliveryCost = sum(demand in Demands) 
@@ -164,10 +182,33 @@
  * (i.e. at least one precedence has a delay time, means 
     it needs a tank), then set the demand not present.
  */
+// forall(demand in Demands)
+//     forall(tank in StorageTanks : demand.quantity > tank.quantityMax)
+//       forall(precedence in Precedences : precedence.delayMin > 0)
+//         !presenceOf(demandInterval[demand]);
+         
  forall(demand in Demands)
-     forall(tank in StorageTanks : demand.quantity > tank.quantityMax)
-       forall(precedence in Precedences : precedence.delayMin > 0)
-         !presenceOf(demandInterval[demand]);
+   span(demandInterval[demand], all(product in Products : 
+                demand.productID == product.productId)products[demand][product]);
+                
+ forall(demand in Demands, product in Products : 
+        demand.productID == product.productId)
+   span(products[demand][product], all(s in Steps : 
+                s.productId == product.productId)steps[demand][product][s]);
+                
+ forall(demand in Demands, product in Products, s in Steps : 
+        demand.productID == product.productId && 
+        product.productId == s.productId)
+   span(steps[demand][product][s], all(alternativ in Alternatives : 
+                alternativ.stepId == s.stepId)alternatives[demand][product][s][alternativ]);
+                
+ forall(demand in Demands, product in Products, s in Steps, pre in Precedences)
+   endBeforeStart(steps[demand][product][<pre.predecessorId>], 
+                    steps[demand][product][<pre.successorId>], 
+                    pre.delayMin);
+                    
+ forall(resource in Resources)
+   noOverlap(resources[resource]);
 //TODO other cases.
  
  }
