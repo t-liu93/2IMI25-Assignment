@@ -115,18 +115,31 @@
  /*
  * Decision variables given by description
  */
- dvar int TotalNonDeliveryCost;
- dvar int TotalProcessingCost;
- dvar int TotalSetupCost;
- dvar int TotalTardinessCost;
+ //Set an interval dvar to decide whether a demand will be processed or not. 
+ dvar interval demandInterval[demand in Demands]
+                optional;
+ 
+ //Non delivery cost if a demand is not present
+ dexpr float TotalNonDeliveryCost = sum(demand in Demands) 
+        demand.quantity * demand.nonDeliveryVariableCost * 
+        !presenceOf(demandInterval[demand]);
+ dexpr float TotalProcessingCost = 0;//TODO
+ dexpr float TotalSetupCost = 0;//TODO
+ dexpr float TotalTardinessCost = 0;//TODO
  
  dexpr float WeightedNonDeliveryCost = TotalNonDeliveryCost * 
-                item(CriterionWeights, ord(CriterionWeights, <"NonDeliveryCost">)).weight;
- 
- dexpr float WeightedProcessingCost = TotalProcessingCost * 1;
- dexpr float WeightedSetupCost = TotalSetupCost * 1;
+                item(CriterionWeights, ord(CriterionWeights, 
+                <"NonDeliveryCost">)).weight;
+ dexpr float WeightedProcessingCost = TotalProcessingCost * 
+                item(CriterionWeights, ord(CriterionWeights, 
+                <"ProcessingCost">)).weight;
+ dexpr float WeightedSetupCost = TotalSetupCost * 
+                item(CriterionWeights, ord(CriterionWeights, 
+                <"ProcessingCost">)).weight;
  dexpr float WeightedTardinessCost = TotalTardinessCost * 
-                item(CriterionWeights, ord(CriterionWeights, <"TardinessCost">)).weight;;
+                item(CriterionWeights, ord(CriterionWeights, 
+                <"TardinessCost">)).weight;
+                
  dexpr float sumWeighted = WeightedNonDeliveryCost + 
                     WeightedProcessingCost + 
                     WeightedSetupCost +
@@ -139,7 +152,24 @@
  minimize sumWeighted;
                     
  subject to {
-  
+ /*
+ * Constraint 1
+ * If a demand is not possible to be processed, 
+ * then just count the non-delivery cost of that demand. 
+ */ 
+ //Here are different cases of this constraint
+ /*
+ * Case 1: If a demand needs at least one tank to store, 
+ * but there is no tank can hold the amount of the demand
+ * (i.e. at least one precedence has a delay time, means 
+    it needs a tank), then set the demand not present.
+ */
+ forall(demand in Demands)
+     forall(tank in StorageTanks : demand.quantity > tank.quantityMax)
+       forall(precedence in Precedences : precedence.delayMin > 0)
+         !presenceOf(demandInterval[demand]);
+//TODO other cases.
+ 
  }
  
  //----- End of constraint programming -----
