@@ -134,8 +134,35 @@
  dvar sequence resources[resource in Resources] in
                 all(demand in Demands, product in Products, 
                 s in Steps, alternativ in Alternatives : 
-                resource.resourceId == alternativ.resourceId)
-                alternatives[demand][product][s][alternativ];
+                resource.resourceId == alternativ.resourceId &&
+                s.productId == product.productId &&
+                product.productId == demand.productID)
+                alternatives[demand][product][s][alternativ]
+                types all(demand in Demands, product in Products, 
+                s in Steps, alternativ in Alternatives : 
+                resource.resourceId == alternativ.resourceId &&
+                s.productId == product.productId &&
+                product.productId == demand.productID) s.productId;
+                
+ tuple triplet {int loc1; int loc2; int value;};
+ {triplet} transitionTimes = {<setup.fromState, setup.toState, setup.setupTime> | setup in Setups};
+ 
+ tuple DemandAlternative {
+    Demand demand;
+    Product product; 
+    StepPrototype stepPrototype;
+    Alternative alternativ;
+ }
+ {DemandAlternative} DemAlter = 
+ {<d, p, st, alter> | d in Demands, p in Products, st in Steps, 
+                    alter in Alternatives : 
+                    d.productID == p.productId && 
+                    p.productId == st.productId &&
+                    st.stepId == alter.stepId};                    
+ cumulFunction storageTank[storage in StorageTanks] = 
+    sum(<d, p, st, alter> in DemAlter) pulse(alternatives[d][p][st][alter], 
+        d.quantity);
+ dvar interval allDemands;
  
  //Non delivery cost if a demand is not present
  dexpr float TotalNonDeliveryCost = sum(demand in Demands) 
@@ -182,11 +209,11 @@
  * (i.e. at least one precedence has a delay time, means 
     it needs a tank), then set the demand not present.
  */
-// forall(demand in Demands)
-//     forall(tank in StorageTanks : demand.quantity > tank.quantityMax)
-//       forall(precedence in Precedences : precedence.delayMin > 0)
-//         !presenceOf(demandInterval[demand]);
-         
+// forall(demand in Demands, precedence in Precedences: precedence.delayMin > 0)
+//   (sum(t in StorageTanks)(demand.quantity < t.quantityMax)) == !presenceOf(demandInterval[demand]);
+//         
+ span(allDemands, all(demand in Demands)demandInterval[demand]);
+ 
  forall(demand in Demands)
    span(demandInterval[demand], all(product in Products : 
                 demand.productID == product.productId)products[demand][product]);
@@ -208,7 +235,18 @@
                     pre.delayMin);
                     
  forall(resource in Resources)
-   noOverlap(resources[resource]);
+   noOverlap(resources[resource], transitionTimes);
+   
+// forall (demand in Demands)
+//   (sum(tank in StorageTanks) (tank.quantityMax >= storageTank[tank])) >= 1;
+
+//    forall(demand in Demands)
+//      card({<tank>|tank in StorageTanks:tank.quantityMax >= storageTank[tank]})>=1;
+
+ forall(tank in StorageTanks)
+   
+
+ 
 //TODO other cases.
  
  }
