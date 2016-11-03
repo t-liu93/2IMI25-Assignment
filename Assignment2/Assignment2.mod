@@ -145,7 +145,9 @@
                 product.productId == demand.productID) s.productId;
                 
  tuple triplet {int loc1; int loc2; int value;};
- {triplet} transitionTimes = {<setup.fromState, setup.toState, setup.setupTime> | setup in Setups};
+ {triplet} transitionTimes[resource in Resources] = 
+    {<setup.fromState, setup.toState, setup.setupTime> | setup in Setups : 
+                    setup.setupMatrixId == resource.setupMatrixId};
  
  tuple DemandAlternative {
     Demand demand;
@@ -235,7 +237,7 @@
                     pre.delayMin);
                     
  forall(resource in Resources)
-   noOverlap(resources[resource], transitionTimes);
+   noOverlap(resources[resource], transitionTimes[resource]);
    
 // forall (demand in Demands)
 //   (sum(tank in StorageTanks) (tank.quantityMax >= storageTank[tank])) >= 1;
@@ -243,8 +245,11 @@
 //    forall(demand in Demands)
 //      card({<tank>|tank in StorageTanks:tank.quantityMax >= storageTank[tank]})>=1;
 
- forall(tank in StorageTanks)
+// forall(tank in StorageTanks, demand in Demands)
+//   alwaysIn(storageTank[tank], demandInterval[demand], 0, tank.quantityMax);
    
+//    forall(tank in StorageTanks, demand in Demands)
+//   alwaysIn(storageTank[tank], 0, 99999, 0, tank.quantityMax);
 
  
 //TODO other cases.
