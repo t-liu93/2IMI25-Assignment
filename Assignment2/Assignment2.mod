@@ -112,24 +112,6 @@
     cp.param.TimeLimit = Opl.card(Demands); 
  }
  
- /*
- * Decision variables given by description
- */
- //Set an interval dvar to decide whether a demand will be processed or not. 
- dvar interval demandInterval[demand in Demands]
-                optional(0);
-                
- dvar interval products[demand in Demands][product in Products]
-                optional(/*demand.productID != product.productId*/0);
-                
- dvar interval steps[demand in Demands][product in Products][s in Steps]
-                optional(/*demand.productID != product.productId || 
-                            s.productId != product.productId*/0);
-                
- dvar interval alternatives[demand in Demands][product in Products][steps in Steps][alternativ in Alternatives]
-                optional
-                size ftoi(ceil(alternativ.fixedProcessingTime + 
-                        demand.quantity * alternativ.variableProcessingTime));
  tuple DemandAlternative {
     Demand demand;
     Product product; 
@@ -141,9 +123,28 @@
  {<d, p, st, alter> | d in Demands, p in Products, st in Steps, 
                     alter in Alternatives : 
                     d.productID == p.productId && 
-                    p.productId == st.productId &&
+                    d.productID == st.productId &&
                     st.stepId == alter.stepId}; 
-                        
+ 
+ /*
+ * Decision variables given by description
+ */
+ //Set an interval dvar to decide whether a demand will be processed or not. 
+ dvar interval demandInterval[demand in Demands]
+                optional;
+                
+ dvar interval products[demand in Demands][product in Products]
+                optional;
+                
+ dvar interval steps[demand in Demands][product in Products][s in Steps]
+                optional/*(demand.productID != product.productId || 
+                            s.productId != product.productId)*/;
+                
+ dvar interval alternatives[demand in Demands][product in Products][steps in Steps][alternativ in Alternatives]
+                optional
+                size ftoi(ceil(alternativ.fixedProcessingTime + 
+                        demand.quantity * alternativ.variableProcessingTime));
+                                            
  pwlFunction costProcess[demand in Demands][p in Products][st in Steps][alter in Alternatives] = 
     piecewise
             {0 -> 0; alter.variableProcessingCost}(0, alter.fixedProcessingCost);
@@ -177,6 +178,7 @@
         !presenceOf(demandInterval[demand]);
  dexpr float TotalProcessingCost = sum(<d, p, st, alter> in DemAlter) 
         endEval(alternatives[d][p][st][alter], costProcess[d][p][st][alter], 0);//TODO
+
  dexpr float TotalSetupCost = 0;//TODO
  dexpr float TotalTardinessCost = 0;//TODO
  
@@ -222,24 +224,48 @@
 //         
  span(allDemands, all(demand in Demands)demandInterval[demand]);
  
- forall(demand in Demands)
-   span(demandInterval[demand], all(product in Products : 
-                demand.productID == product.productId)products[demand][product]);
-                
- forall(demand in Demands, product in Products : 
-                demand.productID == product.productId)
-   span(products[demand][product], all(s in Steps : 
-                demand.productID == product.productId &&
-                s.productId == product.productId)steps[demand][product][s]);
-                
- forall(demand in Demands, product in Products, s in Steps : 
+// forall(demand in Demands)
+//   span(demandInterval[demand], all(product in Products : 
+//                demand.productID == product.productId)products[demand][product]);
+ forall(d in Demands, p in Products : d.productID == p.productId)
+   presenceOf(demandInterval[d]) => presenceOf(products[d][p]);
+ forall(d in Demands, p in Products : 
+        d.productID != p.productId)
+   !presenceOf(products[d][p]);
+                               
+// forall(demand in Demands, product in Products /*: 
+//                demand.productID == product.productId*/)
+//   span(products[demand][product], all(s in Steps : /*
+//                demand.productID == product.productId &&*/
+//                s.productId == product.productId)steps[demand][product][s]/*, 1*/);
+
+ forall(d in Demands, p in Products, s in Steps : p.productId == s.productId)
+   presenceOf(products[d][p]) => presenceOf(steps[d][p][s]);
+ forall(d in Demands, p in Products, s in Steps: 
+            d.productID != p.productId || 
+            p.productId != s.productId ||
+            d.productID != s.productId)
+   !presenceOf(steps[d][p][s]);
+                 
+ forall(demand in Demands, product in Products, s in Steps /*: 
                 demand.productID == product.productId && 
-                s.productId == product.productId)
-   alternative(steps[demand][product][s], all(alternativ in Alternatives : 
-                demand.productID == product.productId && 
-                s.productId == product.productId &&
+                s.productId == product.productId*/)
+   span(steps[demand][product][s], all(alternativ in Alternatives : 
+                /*demand.productID == product.productId && 
+                s.productId == product.productId &&*/
                 alternativ.stepId == s.stepId)alternatives[demand][product][s][alternativ]);
                 
+ forall(d in Demands, p in Products, s in Steps, a in Alternatives : 
+        d.productID != p.productId || d.productID != s.productId ||
+        p.productId != s.productId || s.stepId != a.stepId)
+   !presenceOf(alternatives[d][p][s][a]);
+   
+// forall(d in Demands, p in Products, s in Steps, a in Alternatives : 
+//        d.productID == p.productId && p.productId == s.productId &&
+//        s.stepId == a.stepId)
+//   presenceOf(steps[d][p][s]) => presenceOf(alternatives[d][p][s][a]);
+   
+ 
  forall(demand in Demands, product in Products, s in Steps, pre in Precedences)
    endBeforeStart(steps[demand][product][<pre.predecessorId>], 
                     steps[demand][product][<pre.successorId>], 
