@@ -3,9 +3,11 @@
  * Author 1: Tianyu Liu (0937147), e-mail: t.liu.1@student.tue.nl
  * Author 2: Li Wang (0977456), e-mail: l.wang.3@student.tue.nl
  * Creation Date: Oct 18, 2016 at 12:53:38 PM
+ * Last Modified Date: Oct 7, 2016
  *********************************************/
 
  using CP;
+ 
  /* 
  * Required ata structures
  * Tuples are established according to the xls file structure
@@ -108,88 +110,98 @@
  execute {
     cp.param.Workers = 1;
     cp.param.TimeLimit = Opl.card(Demands); 
-    cp.param.DefaultInferenceLevel = "Extended";
  }
- 
- tuple DemandStep {
-    Demand demand;
-    StepPrototype st; 
- }
- {DemandStep} DemSteps = 
- {<d, st> | d in Demands, st in Steps : 
-        d.productID == st.productId};
-        
- tuple DemandAlternative {
-    Demand demand;
-    StepPrototype stepPrototype;
-    Alternative alternativ;
- }
-  {DemandAlternative} DemAlter = 
- {<d, st, alter> | d in Demands, st in Steps, alter in Alternatives : 
-                    d.productID == st.productId &&
-                    st.stepId == alter.stepId}; 
  
  /*
  * Decision variables given by description
  */
  //Set an interval dvar to decide whether a demand will be processed or not. 
  dvar interval demandInterval[demand in Demands]
-                optional;
-                
-// dvar interval products[demand in Demands][product in Products]
-//                optional;
+                optional(0);
+ 
+ tuple DemandStep{
+    Demand demand;
+    StepPrototype stepPrototype;
+ }
+ 
+ {DemandStep} demandStepList= 
+ {<d,  st> | d in Demands,  st in Steps:d.productID == st.productId}; 
+ 
+ tuple DemandAlternative {
+    Demand demand;
+    StepPrototype stepPrototype;
+    Alternative alternativ;
+ }
+ 
+ {DemandAlternative} DemAlter = 
+ {<d, st, alter> | d in Demands, st in Steps,alter in Alternatives : 
+                    d.productID == st.productId &&
+                    st.stepId == alter.stepId}; 
+             
+ tuple DemandStorage {
+    Demand demand;
+    StepPrototype stepPrototype;
+    StorageProduction storageProduction;
+ }
+                    
+ {DemandStorage} demandStorageList = 
+ {<d, st, store> | d in Demands, st in Steps, store in StorageProductions : 
+                    d.productID == st.productId &&
+                    st.stepId == store.prodStepId};
+ 
+ dvar interval steps[<d,s> in demandStepList];
 
- dvar interval prodSteps[<d, st> in DemSteps]
-                optional;
-                
-// dvar interval steps[demand in Demands][product in Products][s in Steps]
-//                optional/*(demand.productID != product.productId || 
-//                            s.productId != product.productId)*/;
-                            
- dvar interval prodAlter[<d, st, alter> in DemAlter]
+ dvar interval alternatives[<d,s,a> in DemAlter]
                 optional
-                size ftoi(ceil(alter.fixedProcessingTime + 
-                        d.quantity * alter.variableProcessingTime));
-                
- dvar interval alternatives[demand in Demands][product in Products][steps in Steps][alternativ in Alternatives]
-                optional
-                size ftoi(ceil(alternativ.fixedProcessingTime + 
-                        demand.quantity * alternativ.variableProcessingTime));
-                                            
- pwlFunction costProcess[<d, st, alter> in DemAlter] = 
-    piecewise
-            {0 -> 0; alter.variableProcessingCost}(0, alter.fixedProcessingCost);
-                       
+                size ftoi(ceil(a.fixedProcessingTime + 
+                        d.quantity * a.variableProcessingTime));
+
+ pwlFunction costProcess[<d,s,a> in DemAlter] = 
+    piecewise{0 -> 0; a.variableProcessingCost*d.quantity}(0, a.fixedProcessingCost);
+
  dvar sequence resources[resource in Resources] in
-                all(demand in Demands, product in Products, 
-                s in Steps, alternativ in Alternatives : 
-                resource.resourceId == alternativ.resourceId &&
-                s.productId == product.productId &&
-                product.productId == demand.productID)
-                alternatives[demand][product][s][alternativ]
-                types all(demand in Demands, product in Products, 
-                s in Steps, alternativ in Alternatives : 
-                resource.resourceId == alternativ.resourceId &&
-                s.productId == product.productId &&
-                product.productId == demand.productID) s.productId;
+                all(<d,s,a> in DemAlter: 
+                resource.resourceId == a.resourceId)
+                alternatives[<d,s,a>]
+                types all(<d,s,a> in DemAlter: 
+                resource.resourceId == a.resourceId) s.productId;
+
+ dvar interval tanks[demand in Demands][s in Steps][sp in StorageProductions]
+                optional(0);
+                     
+ dvar sequence tankSeq[storage in StorageTanks] in 
+    all(d in Demands,  
+                s in Steps, sp in StorageProductions: 
+                storage.storageTankId == sp.storageTankId &&
+                sp.prodStepId==s.stepId&&
+                s.productId == d.productID)
+                tanks[d][s][sp]
+        types all(d in Demands,  
+                s in Steps, sp in StorageProductions: 
+                storage.storageTankId == sp.storageTankId &&
+                sp.prodStepId==s.stepId&&
+                s.productId == d.productID
+        ) s.productId;
                 
  tuple triplet {int loc1; int loc2; int value;};
  {triplet} transitionTimes[resource in Resources] = 
     {<setup.fromState, setup.toState, setup.setupTime> | setup in Setups : 
                     setup.setupMatrixId == resource.setupMatrixId};
+
+{triplet} tankTransitionTimes [t in StorageTanks] = 
+            {<setup.fromState,setup.toState,setup.setupTime> | 
+                setup in Setups:setup.setupMatrixId==t.setupMatrixId};
                  
  cumulFunction storageTank[storage in StorageTanks] = 
-    sum(<d, st, alter> in DemAlter) pulse(prodAlter[<d, st, alter>], 
+    sum(<d,st, alter> in DemAlter) pulse(alternatives[<d,st,alter>], 
         d.quantity);
- dvar interval allDemands;
  
  //Non delivery cost if a demand is not present
  dexpr float TotalNonDeliveryCost = sum(demand in Demands) 
         demand.quantity * demand.nonDeliveryVariableCost * 
         !presenceOf(demandInterval[demand]);
- dexpr float TotalProcessingCost = sum(<d, st, alter> in DemAlter) 
-        endEval(prodAlter[<d, st, alter>], costProcess[<d, st, alter>], 0);//TODO
-
+ dexpr float TotalProcessingCost = sum(<d, st, alter> in DemAlter)
+        endEval(alternatives[<d,st,alter>], costProcess[<d,st,alter>], 0);//TODO
  dexpr float TotalSetupCost = 0;//TODO
  dexpr float TotalTardinessCost = 0;//TODO
  
@@ -233,71 +245,34 @@
 // forall(demand in Demands, precedence in Precedences: precedence.delayMin > 0)
 //   (sum(t in StorageTanks)(demand.quantity < t.quantityMax)) == !presenceOf(demandInterval[demand]);
 //         
- span(allDemands, all(demand in Demands)demandInterval[demand]);
+ forall(demand in Demands)
+   span(demandInterval[demand], all(s in Steps: 
+                demand.productID == s.productId)steps[<demand,s>]);
+                
+// forall(demand in Demands, product in Products:demand.productID != product.productId)
+//                !presenceOf(products[<demand,product>]);
  
-// forall(demand in Demands)
-//   span(demandInterval[demand], all(product in Products : 
-//                demand.productID == product.productId)products[demand][product]);
-// forall(d in Demands, p in Products : d.productID == p.productId)
-//   presenceOf(demandInterval[d]) => presenceOf(products[d][p]);
-// forall(d in Demands, p in Products : 
-//        d.productID != p.productId)
-//   !presenceOf(products[d][p]);
-//                               
-// forall(demand in Demands, product in Products /*: 
-//                demand.productID == product.productId*/)
-//   span(products[demand][product], all(s in Steps : /*
-//                demand.productID == product.productId &&*/
-//                s.productId == product.productId)steps[demand][product][s]/*, 1*/);
-//
-// forall(d in Demands, p in Products, s in Steps : p.productId == s.productId)
-//   presenceOf(products[d][p]) => presenceOf(steps[d][p][s]);
-// forall(d in Demands, p in Products, s in Steps: 
-//            d.productID != p.productId || 
-//            p.productId != s.productId ||
-//            d.productID != s.productId)
-//   !presenceOf(steps[d][p][s]);
-//                 
-// forall(demand in Demands, product in Products, s in Steps /*: 
-//                demand.productID == product.productId && 
-//                s.productId == product.productId*/)
-//   alternative(steps[demand][product][s], all(alternativ in Alternatives : 
-//                /*demand.productID == product.productId && 
-//                s.productId == product.productId &&*/
-//                alternativ.stepId == s.stepId)alternatives[demand][product][s][alternativ]);
-//                
-// forall(d in Demands, p in Products, s in Steps, a in Alternatives : 
-//        d.productID != p.productId || d.productID != s.productId ||
-//        p.productId != s.productId || s.stepId != a.stepId)
-//   !presenceOf(alternatives[d][p][s][a]);
-   
-// forall(d in Demands, p in Products, s in Steps, a in Alternatives : 
-//        d.productID == p.productId && p.productId == s.productId &&
-//        s.stepId == a.stepId)
-//   presenceOf(steps[d][p][s]) => presenceOf(alternatives[d][p][s][a]);
-
- forall(d in Demands)
-   span(demandInterval[d], all(st in Steps : st.productId == d.productID)
-                    prodSteps[<d, st>]);
-                    
-// forall(<d, s> in DemSteps)
-//   span(demandInterval[d], all(st in Steps : st.productId == d.productID)
-//                    prodSteps[<d, st>]);
-   
-// forall(<d, st> in DemSteps)
-//   alternative(prodSteps[<d, st>], 
-//   all(alter in Alternatives : st.stepId == alter.stepId)prodAlter[<d, st, alter>]);  
-   
- 
- forall(pre in Precedences, ds1, ds2 in DemSteps : 
-        ds1.demand == ds2.demand && 
-        ds1.st.stepId == pre.predecessorId &&
-        ds2.st.stepId == pre.successorId)
-   endBeforeStart(prodSteps[ds1], prodSteps[ds2], 
-                    pre.delayMin);
-                    
+                
+ forall(<d,s> in demandStepList)
+   alternative(steps[<d,s>], all(alternativ in Alternatives :                 
+                alternativ.stepId == s.stepId)alternatives[<d,s,alternativ>]);
+                
+ forall(pre in Precedences,ds1,ds2 in demandStepList :ds1.demand==ds2.demand
+                     && ds1.stepPrototype.stepId==pre.predecessorId 
+                     && ds2.stepPrototype.stepId==pre.successorId)
+   endBeforeStart(steps[ds1], steps[ds2], pre.delayMin);
+                  
  forall(resource in Resources)
    noOverlap(resources[resource], transitionTimes[resource]);
+
+ forall(tank in StorageTanks)
+   noOverlap(tankSeq[tank], tankTransitionTimes[tank]);
+ forall(sp in StorageProductions,ds in demandStepList :ds.stepPrototype.stepId==sp.prodStepId)                
+  startAtEnd(tanks[ds.demand][ds.stepPrototype][sp],steps[ds]);
+ forall(sp in StorageProductions,ds in demandStepList :ds.stepPrototype.stepId==sp.consStepId)                
+  startAtEnd(steps[ds],tanks[ds.demand][ds.stepPrototype][sp]);
+                
+//                startAtEnd();
    
 // forall (demand in Demands)
 //   (sum(tank in StorageTanks) (tank.quantityMax >= storageTank[tank])) >= 1;
