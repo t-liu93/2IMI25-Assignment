@@ -120,16 +120,33 @@
                 optional(0);
                 
  dvar interval products[demand in Demands][product in Products]
-                optional(demand.productID != product.productId);
+                optional(/*demand.productID != product.productId*/0);
                 
  dvar interval steps[demand in Demands][product in Products][s in Steps]
-                optional(demand.productID != product.productId);
+                optional(/*demand.productID != product.productId || 
+                            s.productId != product.productId*/0);
                 
  dvar interval alternatives[demand in Demands][product in Products][steps in Steps][alternativ in Alternatives]
-                optional((demand.productID != product.productId) || 
-                        (steps.stepId != alternativ.stepId))
+                optional
                 size ftoi(ceil(alternativ.fixedProcessingTime + 
                         demand.quantity * alternativ.variableProcessingTime));
+ tuple DemandAlternative {
+    Demand demand;
+    Product product; 
+    StepPrototype stepPrototype;
+    Alternative alternativ;
+ }
+ 
+ {DemandAlternative} DemAlter = 
+ {<d, p, st, alter> | d in Demands, p in Products, st in Steps, 
+                    alter in Alternatives : 
+                    d.productID == p.productId && 
+                    p.productId == st.productId &&
+                    st.stepId == alter.stepId}; 
+                        
+ pwlFunction costProcess[demand in Demands][p in Products][st in Steps][alter in Alternatives] = 
+    piecewise
+            {0 -> 0; alter.variableProcessingCost}(0, alter.fixedProcessingCost);
                        
  dvar sequence resources[resource in Resources] in
                 all(demand in Demands, product in Products, 
@@ -148,19 +165,7 @@
  {triplet} transitionTimes[resource in Resources] = 
     {<setup.fromState, setup.toState, setup.setupTime> | setup in Setups : 
                     setup.setupMatrixId == resource.setupMatrixId};
- 
- tuple DemandAlternative {
-    Demand demand;
-    Product product; 
-    StepPrototype stepPrototype;
-    Alternative alternativ;
- }
- {DemandAlternative} DemAlter = 
- {<d, p, st, alter> | d in Demands, p in Products, st in Steps, 
-                    alter in Alternatives : 
-                    d.productID == p.productId && 
-                    p.productId == st.productId &&
-                    st.stepId == alter.stepId};                    
+                 
  cumulFunction storageTank[storage in StorageTanks] = 
     sum(<d, p, st, alter> in DemAlter) pulse(alternatives[d][p][st][alter], 
         d.quantity);
@@ -170,7 +175,8 @@
  dexpr float TotalNonDeliveryCost = sum(demand in Demands) 
         demand.quantity * demand.nonDeliveryVariableCost * 
         !presenceOf(demandInterval[demand]);
- dexpr float TotalProcessingCost = 0;//TODO
+ dexpr float TotalProcessingCost = sum(<d, p, st, alter> in DemAlter) 
+        endEval(alternatives[d][p][st][alter], costProcess[d][p][st][alter], 0);//TODO
  dexpr float TotalSetupCost = 0;//TODO
  dexpr float TotalTardinessCost = 0;//TODO
  
@@ -221,14 +227,17 @@
                 demand.productID == product.productId)products[demand][product]);
                 
  forall(demand in Demands, product in Products : 
-        demand.productID == product.productId)
+                demand.productID == product.productId)
    span(products[demand][product], all(s in Steps : 
+                demand.productID == product.productId &&
                 s.productId == product.productId)steps[demand][product][s]);
                 
  forall(demand in Demands, product in Products, s in Steps : 
-        demand.productID == product.productId && 
-        product.productId == s.productId)
-   span(steps[demand][product][s], all(alternativ in Alternatives : 
+                demand.productID == product.productId && 
+                s.productId == product.productId)
+   alternative(steps[demand][product][s], all(alternativ in Alternatives : 
+                demand.productID == product.productId && 
+                s.productId == product.productId &&
                 alternativ.stepId == s.stepId)alternatives[demand][product][s][alternativ]);
                 
  forall(demand in Demands, product in Products, s in Steps, pre in Precedences)
@@ -247,7 +256,7 @@
 
 // forall(tank in StorageTanks, demand in Demands)
 //   alwaysIn(storageTank[tank], demandInterval[demand], 0, tank.quantityMax);
-   
+//   
 //    forall(tank in StorageTanks, demand in Demands)
 //   alwaysIn(storageTank[tank], 0, 99999, 0, tank.quantityMax);
 

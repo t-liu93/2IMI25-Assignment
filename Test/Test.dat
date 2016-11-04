@@ -1,26 +1,4 @@
-xSize = 70;
-ySize = 70;
-nrSquares = 20;
+SheetConnection sheet("house2a.xls");
 
-squares = [
-<4, 4>,
-<4, 4>,
-<4, 4>,
-<4, 4>,
-<9, 9>,
-<10, 10>,
-<11, 11>,
-<12, 12>,
-<13, 13>,
-<14, 14>,
-<15, 15>,
-<16, 16>,
-<17, 17>,
-<18, 18>,
-<19, 19>,
-<20, 20>,
-<21, 21>,
-<22, 22>,
-<23, 23>,
-<24, 24>
-];
+Activities from SheetRead(sheet,"Activities");
+Precedences from SheetRead(sheet,"Precedences");
