@@ -3,11 +3,9 @@
  * Author 1: Tianyu Liu (0937147), e-mail: t.liu.1@student.tue.nl
  * Author 2: Li Wang (0977456), e-mail: l.wang.3@student.tue.nl
  * Creation Date: Oct 18, 2016 at 12:53:38 PM
- * Last Modified Date: Oct 7, 2016
  *********************************************/
 
  using CP;
- 
  /* 
  * Required ata structures
  * Tuples are established according to the xls file structure
@@ -99,8 +97,9 @@
      float weight; 
  }
  {CriterionWeight} CriterionWeights = ...;
+ //---------------------------------------------------------
  
- //TODO: Add some more data structures that the calculation needs
+ 
  
  /*
  * Some execute setting about tests, given in the assignment description. 
@@ -110,100 +109,198 @@
  execute {
     cp.param.Workers = 1;
     cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.DefaultInferenceLevel = "Extended";
  }
  
- /*
- * Decision variables given by description
- */
- //Set an interval dvar to decide whether a demand will be processed or not. 
- dvar interval demandInterval[demand in Demands]
-                optional(0);
+ //---------------------------------------------------------
  
- tuple DemandStep{
-    Demand demand;
-    StepPrototype stepPrototype;
+ //A tuple of demands and its corrisponding steps
+ tuple DemandStep {
+    key Demand demand;
+    key StepPrototype st; 
  }
- 
- {DemandStep} demandStepList= 
- {<d,  st> | d in Demands,  st in Steps:d.productID == st.productId}; 
- 
+ //The corrisponding array for all possible steps
+ {DemandStep} DemSteps = 
+ {<d, st> | d in Demands, st in Steps : 
+        d.productID == st.productId};
+
+ //A tuple of demands and its corrisponding steps, as well as alternatives        
  tuple DemandAlternative {
-    Demand demand;
-    StepPrototype stepPrototype;
-    Alternative alternativ;
+    key Demand demand;
+    key StepPrototype st;
+    key Alternative alternativ;
  }
- 
+ //The corrisponding array for all possible alternatives
  {DemandAlternative} DemAlter = 
- {<d, st, alter> | d in Demands, st in Steps,alter in Alternatives : 
+ {<d, st, alter> | d in Demands, st in Steps, alter in Alternatives : 
                     d.productID == st.productId &&
                     st.stepId == alter.stepId}; 
-             
- tuple DemandStorage {
-    Demand demand;
-    StepPrototype stepPrototype;
-    StorageProduction storageProduction;
+ 
+ //Tuple that describes the precedence of a demand's aternatives
+ tuple DemandAlternativePrecedence {
+    key Demand demand;
+    key Precedence pre; 
  }
-                    
- {DemandStorage} demandStorageList = 
- {<d, st, store> | d in Demands, st in Steps, store in StorageProductions : 
-                    d.productID == st.productId &&
-                    st.stepId == store.prodStepId};
- 
- dvar interval steps[<d,s> in demandStepList];
-
- dvar interval alternatives[<d,s,a> in DemAlter]
-                optional
-                size ftoi(ceil(a.fixedProcessingTime + 
-                        d.quantity * a.variableProcessingTime));
-
- pwlFunction costProcess[<d,s,a> in DemAlter] = 
-    piecewise{0 -> 0; a.variableProcessingCost*d.quantity}(0, a.fixedProcessingCost);
-
- dvar sequence resources[resource in Resources] in
-                all(<d,s,a> in DemAlter: 
-                resource.resourceId == a.resourceId)
-                alternatives[<d,s,a>]
-                types all(<d,s,a> in DemAlter: 
-                resource.resourceId == a.resourceId) s.productId;
-
- dvar interval tanks[demand in Demands][s in Steps][sp in StorageProductions]
-                optional(0);
-                     
- dvar sequence tankSeq[storage in StorageTanks] in 
-    all(d in Demands,  
-                s in Steps, sp in StorageProductions: 
-                storage.storageTankId == sp.storageTankId &&
-                sp.prodStepId==s.stepId&&
-                s.productId == d.productID)
-                tanks[d][s][sp]
-        types all(d in Demands,  
-                s in Steps, sp in StorageProductions: 
-                storage.storageTankId == sp.storageTankId &&
-                sp.prodStepId==s.stepId&&
-                s.productId == d.productID
-        ) s.productId;
+ //The corrisponding array to describe all demands' alternatives' precedences
+ {DemandAlternativePrecedence} DemAltPre = 
+ {<d, pre> | <d, st, alter> in DemAlter, <d1, st1, alter1> in DemAlter, pre in Precedences : 
+                d == d1 && 
+                pre.predecessorId == st.stepId && 
+                pre.successorId == st1.stepId};
                 
- tuple triplet {int loc1; int loc2; int value;};
- {triplet} transitionTimes[resource in Resources] = 
-    {<setup.fromState, setup.toState, setup.setupTime> | setup in Setups : 
-                    setup.setupMatrixId == resource.setupMatrixId};
+ //Tuple for storage about a specific step/alternative
+ //Suppose the steps will use a tank (it may not depends on the solver)
+ tuple StepStorage {
+    key StorageProduction sp;
+    key DemandAlternativePrecedence dap;
+    StorageTank tank;
+ }
+ //The array for all steps thay may use a tank
+ {StepStorage} StepStorages = 
+ {<sp, dap, tank> | sp in StorageProductions, dap in DemAltPre, 
+                    tank in StorageTanks : sp.prodStepId == dap.pre.predecessorId && 
+                    sp.consStepId == dap.pre.successorId && 
+                    sp.storageTankId == tank.storageTankId};
 
-{triplet} tankTransitionTimes [t in StorageTanks] = 
-            {<setup.fromState,setup.toState,setup.setupTime> | 
-                setup in Setups:setup.setupMatrixId==t.setupMatrixId};
-                 
- cumulFunction storageTank[storage in StorageTanks] = 
-    sum(<d,st, alter> in DemAlter) pulse(alternatives[<d,st,alter>], 
-        d.quantity);
+ //Decision variables go here
+ //The interval to determine the processing time of a demand
+ dvar interval demandInterval[demand in Demands]
+                optional
+                in demand.deliveryMin..demand.deliveryMax; //Window time
+
+ //The interval to determine the processing time of a step
+ dvar interval demSteps[<d, st> in DemSteps]
+                optional;
+  
+ //The interval to determine the processing time of an alternative                                  
+ dvar interval demAlter[<d, st, alter> in DemAlter]
+                optional
+                size ftoi(ceil(alter.fixedProcessingTime + 
+                        d.quantity * alter.variableProcessingTime)); //Processing time
  
- //Non delivery cost if a demand is not present
+ //The interval that describes the use time of a tank
+ dvar interval tankUse[ss in StepStorages]
+                optional //depends on whether a tank is used or not
+                size ss.dap.pre.delayMin..ss.dap.pre.delayMax;                                                      
+ {DemandAlternative} DemAlterResources[r in Resources] = 
+ {dar | dar in DemAlter : dar.alternativ.resourceId == r.resourceId};                
+ dvar sequence resources[r in Resources] in
+                all(da in DemAlter : 
+                r.resourceId == da.alternativ.resourceId)
+                demAlter[da]
+                types all(da in DemAlter : 
+                r.resourceId == da.alternativ.resourceId) da.st.productId;
+// dvar sequence resources[r in Resources] in
+//                all(dar in DemAlterResources[r])demAlter[dar]
+//                types all(dar in DemAlterResources[r])dar.demand.productID;
+ dvar interval resourSetup[da in DemAlter]
+                optional;
+ //An interval just to connect resource with setup resource
+
+                
+// dvar interval tanks[<d, st, sp> in demStorages]
+//                optional;
+                
+// dvar sequence tankSeq[sto in StorageTanks] in all(
+//        <d, st, sp> in demStorages : 
+//        sp.storageTankId == sto.storageTankId) tanks[<d, st, sp>]
+//    types all(<d, st, sp> in demStorages : 
+//        sp.storageTankId == sto.storageTankId) st.productId;
+ 
+ //Tuples and arrays for setup issues (both for resources and storage tanks)               
+ tuple triplet {int loc1; int loc2; int value;};
+ {triplet} transitionTimesResource[r in Resources] = 
+    {<setup.fromState, setup.toState, setup.setupTime> | setup in Setups : 
+                    setup.setupMatrixId == r.setupMatrixId};
+ {triplet} transitionTimesStorage[tank in StorageTanks] = 
+    {<setup.fromState, setup.toState, setup.setupTime> | setup in Setups : 
+                    setup.setupMatrixId == tank.setupMatrixId};
+ //The exact setup time calculations
+ //For both resources and tanks
+ //for resources it is setup time
+ //for tanks it is so-called clean time
+
+ //Calculate productId, since somehow dexpr cannot index Products
+ {int} productIds = {p.productId | p in Products};
+ int setupTimeResource[r in Resources][preProd in productIds union {-1}]
+                                    [succProd in productIds] = 
+     sum(<matrixId, fromState, toState, setupTime, setupCost> in
+            Setups : matrixId == r.setupMatrixId && 
+            fromState == preProd && toState == succProd)
+            setupTime;
+ int setupTimeStorage[tank in StorageTanks][preProd in productIds union {-1}]
+                                    [succProd in productIds] = 
+     sum(<matrixId, fromState, toState, setupTime, setupCost> in
+            Setups : matrixId == tank.setupMatrixId && 
+            fromState == preProd && toState == succProd)
+            setupTime;    
+ 
+ //The exact setup cost/clean cost for resources/tanks
+ int setupCostResource[r in Resources][preProd in productIds union {-1}] //-1 is those not need setup
+                                    [succProd in productIds] = 
+     sum(<matrixId, fromState, toState, setupTime, setupCost> in
+            Setups : matrixId == r.setupMatrixId && 
+            fromState == preProd && toState == succProd)
+            setupCost;
+ int setupCostStorage[tank in StorageTanks][preProd in productIds union {-1}]
+                                    [succProd in productIds] = 
+     sum(<matrixId, fromState, toState, setupTime, setupCost> in
+            Setups : matrixId == tank.setupMatrixId && 
+            fromState == preProd && toState == succProd)
+            setupCost;  
+ 
+ //To solve tank issue, calculate the amount stored in a tank                
+ cumulFunction storageTank[tank in StorageTanks] = 
+    sum(ss in StepStorages : ss.tank == tank) pulse(tankUse[ss], 
+        ss.dap.demand.quantity);
+ stateFunction productInTank[tank in StorageTanks] with transitionTimesStorage[tank];
+ 
+ 
+ //TardinessCost calculation
+ pwlFunction tardinessCost[d in Demands] = 
+    piecewise
+            {0 -> d.dueTime; d.nonDeliveryVariableCost * d.quantity}(d.dueTime, 0);
+      
+ //Decision Expressions
+ //A previous product for a specific resource
+ //used to determine setup time       
+ dexpr int prevProduct[da in DemAlter] = typeOfPrev(
+        resources[item(Resources, <da.alternativ.resourceId>)], 
+        demAlter[da], 
+        item(Resources, <da.alternativ.resourceId>).initialProductId);
+ 
+ //An alternative that requires a setup for its resource       
+ dexpr int alterToBeSetup[da in DemAlter] = 
+        presenceOf(demAlter[da]) && 
+        prevProduct[da] >= 0 &&
+        da.demand.productID != prevProduct[da];
+ 
+ //Total non-delivery cost, only used when a demand is not present
  dexpr float TotalNonDeliveryCost = sum(demand in Demands) 
         demand.quantity * demand.nonDeliveryVariableCost * 
         !presenceOf(demandInterval[demand]);
- dexpr float TotalProcessingCost = sum(<d, st, alter> in DemAlter)
-        endEval(alternatives[<d,st,alter>], costProcess[<d,st,alter>], 0);//TODO
- dexpr float TotalSetupCost = 0;//TODO
- dexpr float TotalTardinessCost = 0;//TODO
+ 
+ //Total processing cost, which depands on the chosen alternative 
+ //and the quantity
+ dexpr float TotalProcessingCost = sum(<d, st, alter> in DemAlter) 
+        (alter.fixedProcessingCost + (alter.variableProcessingCost * d.quantity)) * 
+        presenceOf(demAlter[<d, st, alter>]);
+        
+ //Total setup cost, only when a tank/resource needs a setup
+ //Also, that needed alternative should present
+ //Introducce two temp dexpr represents the setup cost for a 
+ //specific resource/tank
+ dexpr float resourceSetupCost[da in DemAlter] = 
+    presenceOf(resourSetup[da]) * setupCostResource[<da.alternativ.resourceId>]
+                            [prevProduct[da]][da.st.productId];
+// dexpr float tankSetupCost[<d, st, alter> in DemAlter] = 
+//    presenceOf(resourSetup[<d, st, alter>]) * setupCostResource[<alter.resourceId>]
+//                            [<prevProduct[<d, st, alter>]>][<st.productId>];
+ dexpr float TotalSetupCost = sum(da in DemAlter)resourceSetupCost[da];
+// dexpr float TotalSetupCost = 0;
+ //Total TardinessCost, depends on the tardiness time and unit
+ dexpr float TotalTardinessCost = sum(d in Demands)
+            endEval(demandInterval[d], tardinessCost[d]);//TODO
  
  dexpr float WeightedNonDeliveryCost = TotalNonDeliveryCost * 
                 item(CriterionWeights, ord(CriterionWeights, 
@@ -216,63 +313,95 @@
                 <"ProcessingCost">)).weight;
  dexpr float WeightedTardinessCost = TotalTardinessCost * 
                 item(CriterionWeights, ord(CriterionWeights, 
-                <"TardinessCost">)).weight;
-                
+                <"TardinessCost">)).weight;               
  dexpr float sumWeighted = WeightedNonDeliveryCost + 
                     WeightedProcessingCost + 
                     WeightedSetupCost +
                     WeightedTardinessCost;
-//TODO: Add detail of the decision expressions
- /*
- * Here goes the minimize part and subjects.
- */
- //TODO: What we want to minimize and subject 
+
  minimize sumWeighted;
                     
  subject to {
- /*
- * Constraint 1
- * If a demand is not possible to be processed, 
- * then just count the non-delivery cost of that demand. 
- */ 
- //Here are different cases of this constraint
- /*
- * Case 1: If a demand needs at least one tank to store, 
- * but there is no tank can hold the amount of the demand
- * (i.e. at least one precedence has a delay time, means 
-    it needs a tank), then set the demand not present.
- */
-// forall(demand in Demands, precedence in Precedences: precedence.delayMin > 0)
-//   (sum(t in StorageTanks)(demand.quantity < t.quantityMax)) == !presenceOf(demandInterval[demand]);
-//         
- forall(demand in Demands)
-   span(demandInterval[demand], all(s in Steps: 
-                demand.productID == s.productId)steps[<demand,s>]);
-                
-// forall(demand in Demands, product in Products:demand.productID != product.productId)
-//                !presenceOf(products[<demand,product>]);
+ //General constraint
+ //If a demand has a quantity which is larget than any tanks, just not present it
+ forall (d in Demands)
+   d.quantity > max(tank in StorageTanks) tank.quantityMax 
+    => !presenceOf(demandInterval[d]); 
  
-                
- forall(<d,s> in demandStepList)
-   alternative(steps[<d,s>], all(alternativ in Alternatives :                 
-                alternativ.stepId == s.stepId)alternatives[<d,s,alternativ>]);
-                
- forall(pre in Precedences,ds1,ds2 in demandStepList :ds1.demand==ds2.demand
-                     && ds1.stepPrototype.stepId==pre.predecessorId 
-                     && ds2.stepPrototype.stepId==pre.successorId)
-   endBeforeStart(steps[ds1], steps[ds2], pre.delayMin);
-                  
+ //For those not presented(not delivered) demands,
+ //(these demands should have steps use a tank(appearantly))
+ //no tank will be used
+ forall (ss in StepStorages)
+   !presenceOf(demandInterval[ss.dap.demand]) => !presenceOf(tankUse[ss]);
+   
+ //For those demand that will storage
+ //use only one tank at the same time over all steps/alternatives
+ forall (dap in DemAltPre : dap.pre.delayMin > 0)
+   presenceOf(demandInterval[dap.demand]) => 
+   (sum(ss in StepStorages : ss.dap == dap) presenceOf(tankUse[ss]) == 1);
+ 
+ //For those steps(one alternative) that will use a tank
+ //The storaged product should be in the tank quantity max
+ forall (tank in StorageTanks)
+   storageTank[tank] <= tank.quantityMax;
+ 
+ //Constraints about setup
+ //All alternative steps need a setup when needed
+ forall(da in DemAlter)
+   (alterToBeSetup[da] == 1) => presenceOf(resourSetup[da]); 
+ //Setup time (setup interval length) is equal to the value in matrix
+ forall(da in DemAlter)
+   presenceOf(resourSetup[da]) => lengthOf(resourSetup[da]) == 
+        setupTimeResource[<da.alternativ.resourceId>][prevProduct[da]][da.st.productId]; 
+ //The processing step should followed by setup without any delay
+ forall(da in DemAlter)
+   startAtEnd(demAlter[da], resourSetup[da]);
+ 
+ //Span all demandIntervals to its steps
+ forall(d in Demands)
+   span(demandInterval[d], all(st in Steps : st.productId == d.productID)
+                    demSteps[<d, st>]);
+ //Make sure that a present demand must present all its steps
+ forall(<d, st> in DemSteps)
+   presenceOf(demandInterval[d]) => presenceOf(demSteps[<d, st>]);                                    
+ 
+ //For each present step, only one alternative can be chosen  
+ forall(<d, st> in DemSteps)
+   alternative(demSteps[<d, st>], 
+   all(alter in Alternatives : st.stepId == alter.stepId)demAlter[<d, st, alter>]);  
+   
+// forall(pre in Precedences, ds1, ds2 in DemSteps : 
+//        ds1.demand == ds2.demand && 
+//        ds1.st.stepId == pre.predecessorId &&
+//        ds2.st.stepId == pre.successorId)
+//   endBeforeStart(demSteps[ds1], demSteps[ds2], 
+//                    pre.delayMin);
  forall(resource in Resources)
-   noOverlap(resources[resource], transitionTimes[resource]);
-
- forall(tank in StorageTanks)
-   noOverlap(tankSeq[tank], tankTransitionTimes[tank]);
- forall(sp in StorageProductions,ds in demandStepList :ds.stepPrototype.stepId==sp.prodStepId)                
-  startAtEnd(tanks[ds.demand][ds.stepPrototype][sp],steps[ds]);
- forall(sp in StorageProductions,ds in demandStepList :ds.stepPrototype.stepId==sp.consStepId)                
-  startAtEnd(steps[ds],tanks[ds.demand][ds.stepPrototype][sp]);
-                
-//                startAtEnd();
+   noOverlap(resources[resource], transitionTimesResource[resource], 0);
+   
+// forall(sp in StorageProductions, ds1, ds2 in DemSteps : 
+//        ds1.demand.demandID == ds2.demand.demandID && 
+//        ds1.st.stepId == sp.prodStepId &&
+//        ds2.st.stepId == sp.consStepId) {
+//        startAtEnd(tankUse[<ds1.demand, ds1.st, sp>], demSteps[ds1]);   
+//        startAtEnd(demSteps[ds2], tanks[<ds1.demand, ds1.st, sp>]);       
+//        }
+        
+// forall(ss1, ss2 in StepStorages, ds1, ds2 in DemSteps : 
+//            ds1.demand.demandID == ds2.demand.demandID &&
+//            ds1.demand.demandID == ss1.dap.demand.demandID && 
+//            ss1.dap.demand.demandID == ss2.dap.demand.demandID) {
+//        startAtEnd(tankUse[ss1], demSteps[ds1]);   
+//        startAtEnd(demSteps[ds2], tankUse[ss1]);       
+//        }
+        
+// forall(<d, st, sp> in demStorages, tank in StorageTanks : 
+//        sp.storageTankId == tank.storageTankId)
+//        storageTank[tank] <= tank.quantityMax;
+//        
+        
+//        alwaysIn(storageTank[<sp.storageTankId>], demandInterval[d], 0, 
+//        tank.quantityMax);
    
 // forall (demand in Demands)
 //   (sum(tank in StorageTanks) (tank.quantityMax >= storageTank[tank])) >= 1;
@@ -285,9 +414,6 @@
 //   
 //    forall(tank in StorageTanks, demand in Demands)
 //   alwaysIn(storageTank[tank], 0, 99999, 0, tank.quantityMax);
-
- 
-//TODO other cases.
  
  }
  
