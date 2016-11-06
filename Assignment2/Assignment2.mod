@@ -109,13 +109,13 @@ tuple CriterionWeight {
 execute {
   cp.param.Workers = 1;
   cp.param.TimeLimit = Opl.card(Demands);
-//  cp.param.TimeLimit = 2 * Opl.card(Demands);
-//  cp.param.DefaultInferenceLevel = "Extended";
-//  cp.param.DefaultInferenceLevel = "Low";
+  //  cp.param.TimeLimit = 2 * Opl.card(Demands);
+  cp.param.DefaultInferenceLevel = "Extended";
+  //  cp.param.DefaultInferenceLevel = "Low";
   cp.param.DefaultInferenceLevel = "Medium";
-  cp.param.SearchConfiguration = "DepthFirst";
-//  cp.param.SearchConfiguration = "Restart";
-//  cp.param.SearchConfiguration = "MultiPoint";
+  //  cp.param.SearchConfiguration = "DepthFirst";
+  //  cp.param.SearchConfiguration = "Restart";
+  //  cp.param.SearchConfiguration = "MultiPoint";
 
 
 }
@@ -266,6 +266,9 @@ dexpr int prevProductTank[ss in StepStorages] = typeOfPrev ( tankSequence[item
 //An alternative that requires a setup for its resource
 dexpr int alterToBeSetup[da in DemAlters] = presenceOf ( demAlters[da] )
    && prevProduct[da] >= 0;
+//A discarded version
+//dexpr int alterToBeSetup[da in DemAlters] = presenceOf ( demAlters[da] )
+//   && prevProduct[da] >= 0 && da.demand.productId != prevProduct[da];
 //A tank use that requires a setup
 dexpr int tankToBeSetup[ss in StepStorages] = presenceOf ( tankUse[ss] )
    && ss.dap.demand.productId != prevProductTank[ss];
@@ -308,14 +311,14 @@ dexpr float WeightedTardinessCost = TotalTardinessCost * item
   ( CriterionWeights, ord ( CriterionWeights, < "TardinessCost" > ) ).weight;
 dexpr float sumWeighted = WeightedNonDeliveryCost + WeightedProcessingCost + 
   WeightedSetupCost + WeightedTardinessCost;
-  
+
 //Some aux calculations
 //since bound calculations are discarded, this is also discarded
-//float minimizedProcCostStep[ds in DemSteps] = 
-//    min(da in DemAlters : 
+//float minimizedProcCostStep[ds in DemSteps] =
+//    min(da in DemAlters :
 //    da.alternativ.stepId == ds.st.stepId)da.alternativ.variableProcessingCost *
 //    ds.demand.quantity;
-   
+
 
 minimize
   sumWeighted;
@@ -324,10 +327,10 @@ subject to {
   //General constraint
   //Bounds
   //However, this constraint may caouse a no value for instance 4
-//  sumWeighted >= (sum(ds in DemSteps)minimizedProcCostStep[ds]) / 
-//        card(Demands);
-//  sumWeighted <= sum(d in Demands)d.nonDeliveryVariableCost * 
-//  d.quantity; 
+  //  sumWeighted >= (sum(ds in DemSteps)minimizedProcCostStep[ds]) /
+  //        card(Demands);
+  //  sumWeighted <= sum(d in Demands)d.nonDeliveryVariableCost *
+  //  d.quantity;
 
   //If a demand has a quantity which is larget than any tanks, just not present it
   forall ( d in Demands )
@@ -335,6 +338,11 @@ subject to {
       ( demandInterval[d] );
 
   //Delivery window
+  //A discarded version
+  //  forall (d in Demands) {
+  //    startOf(demandInterval[d]) >= d.deliveryMin;
+  //    endOf ( demandInterval[d] ) <= d.deliveryMax;
+  //  }
   forall ( d in Demands ) {
     endOf ( demandInterval[d] ) >= d.deliveryMin;
     endOf ( demandInterval[d] ) <= d.deliveryMax;
@@ -373,6 +381,7 @@ subject to {
   forall ( dap in DemAltPre : dap.pre.delayMin > 0 )
     presenceOf ( demandInterval[dap.demand] ) => ( sum ( ss in StepStorages :
        ss.dap == dap ) presenceOf ( tankUse[ss] ) == 1 );
+
   //For delay time == 0, it can use a tank
   forall ( dap in DemAltPre : dap.pre.delayMin == 0 )
     presenceOf ( demandInterval[dap.demand] ) => ( sum ( ss in StepStorages :
@@ -388,12 +397,12 @@ subject to {
     storageTank[tank] <= tank.quantityMax;
 
   //Tank can only be cleaned(setup) when its empty
-  forall (ds in DemSteps, ss in StepStorages : 
-    ss.dap.demand == ds.demand)
-    (startOf(demSteps[ds]) <= startOf(tankUse[ss]) && 
-    endOf(demSteps[ds]) <= startOf(tankUse[ss])) || 
-    (startOf(demSteps[ds]) >= endOf(tankUse[ss]) && 
-    endOf(demSteps[ds]) >= endOf(tankUse[ss]));
+  forall ( ds in DemSteps, ss in StepStorages : ss.dap.demand == ds.demand )
+    ( startOf ( demSteps[ds] ) <= startOf ( tankUse[ss] ) && endOf 
+      ( demSteps[ds] ) <= startOf ( tankUse[ss] ) ) || ( startOf 
+      ( demSteps[ds] ) >= endOf ( tankUse[ss] ) && endOf ( demSteps[ds] )
+       >= endOf ( tankUse[ss] ) );
+
   forall ( ss in StepStorages )
     alwaysIn ( storageTank[ss.tank], tankSetup[ss], 0, 0 );
 
@@ -406,6 +415,7 @@ subject to {
   forall ( ss in StepStorages, ds in DemSteps :
      ss.dap.demand == ds.demand && ss.dap.pre.predecessorId == ds.st.stepId )
     startAtEnd ( tankUse[ss], demSteps[ds] );
+
   forall ( ss in StepStorages, ds in DemSteps :
      ss.dap.demand == ds.demand && ss.dap.pre.successorId == ds.st.stepId )
     startAtEnd ( demSteps[ds], tankUse[ss] );
@@ -445,6 +455,7 @@ subject to {
 
   forall ( sr in SetupResources )
     noOverlap ( setupResourceSequence[sr] );
+
 }
 
 //----- End of constraint programming -----

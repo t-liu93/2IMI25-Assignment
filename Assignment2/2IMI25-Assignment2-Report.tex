@@ -252,7 +252,7 @@ dvar interval demAlters[< d, st, alter > in DemAlters]
                         d.quantity * 
                         alter.variableProcessingTime ) );
 \end{lstlisting}
-This interval is at the lowest level. It represents the exact processing time for an alternative of a step. It has a size that calculated by the value from the instance table. The size of \texttt{demSteps} and the size of \texttt{demandInterval} is defined by this interval. 
+This interval is at the lowest level. It represents the exact processing time for an alternative of a step. It has a size that calculated by the value from the instance table. The size of \texttt{demSteps} and the size of \texttt{demandInterval} is defined by this interval. We use \texttt{span} command and \texttt{alternative} command to define this. 
 
 We also have another version such that we defined the size of \texttt{demAlters} in constraints, but somehow cannot give values. Hence we put the size here, this issue will be discussed in the constraint part. 
 \item \texttt{resources} and \texttt{tankSequence}
@@ -400,6 +400,8 @@ dexpr float sumWeighted =
   WeightedTardinessCost;
 \end{lstlisting}
 The weighted cost is the total cost times the weight value. The weight value is read from instance table by using \texttt{item} command. Then the sum cost is the sum of all four weighted costs. And the sum value is what we will minimize. 
+
+Actually, the dexpr to calculate the cost for one step, demand, etc. is not necessary in our modeling. We built these expression in order to add them into the output statements. 
 \end{enumerate}
 
 \subsection{Constraints}
@@ -561,7 +563,7 @@ Operating System: Windows 10 Pro 64bit
 
 This section also includes a conclusion and discussion on all these test cases. 
 
-\subsection{Some alternative constraints in test period}
+\subsection{Some alternative mods in test period}
 
 We have some alternative models, with more constraints. However, in our test period, we found some constraints that we added gave worse performance. So we discarded them and they are discussed here. 
 
@@ -633,11 +635,47 @@ And we tested all combinations of the model, the test is also using "Extended" i
 \end{table}
 According to the result, if we have both constraints, the general performance is better than having any one of them. Hence we decide to add both constraints in our model in the final version.
 
+\subsubsection{Resource setup issues}
+
+In one of our versions, we have the decision expression \texttt{alterToBeSetup} as: 
+
+\begin{lstlisting}
+dexpr int alterToBeSetup[da in DemAlters] = presenceOf ( demAlters[da] )
+  && prevProduct[da] >= 0 && da.demand.productId != prevProduct[da];
+\end{lstlisting}
+
+In this version, we thought that on a specific resource, if the previous product is the same as the next one, then no setup is needed. However, in small instance \texttt{foodSetup1.xls}, there exists a resource setup with same product at cost 60. We changed the code to our current version. 
+
+However, we still have a question, in the assignment description, it only mentioned that change product on a resource requires a setup. So for this situation, we wondering which is the correct one. Even though we decided to use our current version, we still thought the early version is better.
+
 \subsubsection{Conclusions on alternative models}
 
 We also had more alternative constraints, but they are either wrong constraints or have a different meaning from the assignment description. Hence we just deleted them and they are not shown in this report. 
 
-In our case, we found that in some cases a bound may decrease the performance, and normally a redundant constraint can slightly increase the performance. But these also various on the model settings, which will be discussed in the next sections. 
+In our case, we found that in some cases a bound may decrease the performance, and normally a redundant constraint can slightly increase the performance. But these also various on the model settings, which will be discussed in the next sections.
+
+\subsection{Tests on small instances}
+
+The tests on small instances run on default settings. Just to perform that the model can give correct solutions. See Table \ref{small}. 
+
+For the small test instances, the model we built can give an optimal solution and with very little fails. In this case, we considered this model a good one. 
+
+\begin{table}
+    \centering
+    \caption{Test results on small instances}
+    \label{small}
+    \begin{tabular}{|c|c|c|c|}
+    \hline
+    Instance & Solution & Running Time & \#Fails \\
+    \hline
+    \texttt{foodPrecedence1.xls} & 1 & 0.08s & 6 \\
+    \hline 
+    \texttt{foodSetup1.xls} & 127 & 0.14s & 16 \\
+    \hline
+    \texttt{foodTankSetup1.xls} & 100.3 & 0.07s & 79 \\
+    \hline 
+    \end{tabular}
+\end{table} 
 
 \subsection{Test on Instance0.xls}
 
@@ -1026,7 +1064,7 @@ execute {
 The result is shown in Table \ref{diffTime2}.
 \begin{table}
     \centering
-    \caption{Test result on different time limits for instance Instance1.xls}
+    \caption{Test result on different time limits for instance Instance2.xls}
     \label{diffTime2}
     \begin{tabular}{|c|c|c|c|c|c|c|c|}
         \hline
@@ -1060,7 +1098,7 @@ The result is shown in Table \ref{diffSear2}
 
 \begin{table}
     \centering
-    \caption{Test result on different search methods for instance Instance1.xls}
+    \caption{Test result on different search methods for instance Instance2.xls}
     \label{diffSear2}
     \begin{tabular}{|c|c|c|c|c|c|c|c|}
         \hline
@@ -1435,7 +1473,7 @@ The model we built can process small instance with an optimal solutions as given
 
 \item Instance 0
 
-The best setting for Instance0.xls is: 
+The best setting for \texttt{Instance0.xls} is: 
 \begin{lstlisting}
 execute {
     cp.param.Workers = 1;
@@ -1443,8 +1481,104 @@ execute {
     cp.param.SearchConfiguration = "MultiPoint";
 }
 \end{lstlisting}
+
+For this instance, using multipoint search method can give the best solution we ever tested. The best solution we have is 1458.333, which is a little bit higher than the good solution given by the professor. 
+
+Running this instance for 2 times of default time limit will also get this answer, hence the performance is good. 
+\item Instance 1
+
+The best setting for \texttt{Instance1.xls} is: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 24; //The number of demands
+    cp.param.DefaultInferenceLevel = "Medium";
+}
+\end{lstlisting}
+
+For this instance, medium inference level gives the best solution, which is 4903. Different search methods also varies the results, but if we combined the medium inference level and any specific search method, the result may not be good. 
+
+However, our model for this instance seems not perform good. There are considerable differences between the result of 24s and 48s. But this situation only occurs on this instance, we wondering whether it is the problem of our model or something else. 
+
+\item Instance 2
+
+The best setting for \texttt{Instance2.xls} is: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 32; 
+    cp.param.DefaultInferenceLevel = "Extended";
+}
+\end{lstlisting}
+
+For this instance, using extended inference model gives the best result. This best result is 13007, and it is much better than any other results. Hence for this specific instance, the inference level has a very important affect on the results. 
+
+The longer running didn't give a much better result rather than changing inference level. 
+
+\item Instance 3
+
+The best setting for \texttt{Instance3.xls} is
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 32s; 
+    cp.param.DefaultInferenceLevel = "Medium";
+}
+\end{lstlisting}
+
+The result with this setting is 24382.5. For this instance, only limited number of settings can perform a solution. Hence for this instance, it is hard to say whether this model is good enough for this instance. 
+
+\item Instance 4
+
+The best setting for \texttt{Instance4.xls} is 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 40s; 
+    cp.param.DefaultInferenceLevel = "Medium";
+    cp.param.SearchConfiguration = "DepthFirst";
+}
+\end{lstlisting}
+
+For this instance, two combined settings should be changed, the inference level should be medium and depth first search method should be performed. If we chose either of them, the model will not perform a solution. 
 \end{enumerate}
 
+Generally speaking, most of the instances we tested required medium inference level to perform the best solution. Hence we decided to set the default inference level of our model to "Medium". 
 
+However, for instance 4, the only setting of inference may lead to a very bad solution. 
+
+\subsection{General conclusions and Discussions}
+
+\begin{enumerate}[a.~]
+\item Inference Level
+
+The inference level can affect the result significantly. Normally, lower inference level may lead to a higher searching speed as well as higher fails, but the probability that the solver can find a good answer is still very low. 
+
+On the other hand, higher inference level may lead to a lower searching speed as well as lower fails, and the searching seems to be deeper. As a result, the solver can find a better solution in a short time. 
+
+However, this is for most cases, for some special cases (we don't know what are the key points of these special cases), medium inference level may have a better result than extended inference level. 
+
+\item Time Limit
+
+We have this logic: if a longer running time can give a much better solution, then the performance of a model is not good enough. 
+
+For our model, the situation was in most cases, longer running time can only give a slightly better solution. Hence we believe our model is good enough. 
+
+\item Search method
+
+Search method can vary the result performance. However, we didn't find a method to define which search method is better for which instance. According to our tests, the optimal search method varies for different instances. Hence we set the default search method of our model to auto, let the solver decide which one is better. 
+
+\item Redundant constraints and bounds
+
+According to common sense, adding redundant constraints and bounds may increase performance. However, in our model, the bound we added decreased the performance. For some instances, redundant constraints also decreased performance. We haven't found out the reason for this situation. 
+
+\item Symmetry breaking points
+
+In our model, we didn't find a certain place to add a symmetry breaking point to increase performance. 
+\end{enumerate}
 
 \end{document}
