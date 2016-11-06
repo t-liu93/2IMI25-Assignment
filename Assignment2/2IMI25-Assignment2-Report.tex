@@ -4,11 +4,12 @@
 \usepackage[utf8]{inputenc}
 \usepackage[colorinlistoftodos]{todonotes}
 \usepackage{listings}
+\usepackage{xcolor}
+\usepackage{color}
 \usepackage{algorithm,algpseudocode}
 \usepackage{a4wide,amsmath,amssymb,fancyhdr,graphicx,tabularx,xspace}
 \usepackage{amsthm}
 \usepackage{mathtools,enumerate}
-\usepackage{enumitem}
 
 \DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
 \parindent = 0pt
@@ -19,41 +20,43 @@
 \newcommand{\tab}{\hspace{4ex}}
 \newcommand{\twoline}{\vspace{2ex}}
 \newcommand{\oneline}{\vspace{1ex}}
+\newcommand{\tabincell}[2]{\begin{tabular}{@{}#1@{}}#2\end{tabular}}
 
-\lstset{
-    basicstyle=\ttfamily\footnotesize,
-    tabsize=2
-}
 
 \title{2IMI25 - Constraint Programming - Assignment 2 - Report}
 \author{Tianyu Liu (0937147), t.liu.1@student.tue.nl \and Li Wang (0977456), l.wang.3@student.tue.nl}
 \date{\today}
-
+\definecolor{commentGreen}{rgb}{0.08,0.38,0.12}
+\lstset{language = C,
+    basicstyle=\ttfamily,
+    keywordstyle=\color{blue}\fontfamily{Courier New},
+    commentstyle=\color{commentGreen}\fontfamily{Courier New},
+    stringstyle=\color{red}\fontfamily{Courier New}}
 \begin{document}
 
-%	Title page
+%    Title page
 %----------------------------------------------------------------------------------------------------------------------
 \begin{titlepage}
-	\newcommand{\HRule}{\rule{\linewidth}{0.5mm}} % Defines a new command for the horizontal lines, change thickness here
-	\centering
-	\textsc{\LARGE Eindhoven University of Technology}\\[1.5cm]
-	\textsc{\Large 2IMI25 Constraint Programming}\\[1.5cm]
-	\textsc{\large Assignment 2 - Report}\\[3cm]
-	\begin{minipage}{0.4\textwidth}
-		\begin{flushleft} \large
-			\emph{Authors:}\\ [0.5cm]
-			Tianyu \textsc{Liu}\\
-			Student Number: 0937147\\
-			E-mail: t.liu.1@student.tue.nl\\ [0.2cm]
-			Li \textsc{Wang}\\
-			Student Number: 0977456\\
-			E-mail: l.wang.3@student.tue.nl\\ [0.2cm]
-		\end{flushleft}
-	\end{minipage}
-	
-	\vspace{15ex}
-	{\large \today}\\[3cm] % Date, change the \today to a set date if you want to be precise
-	\vfill
+    \newcommand{\HRule}{\rule{\linewidth}{0.5mm}} % Defines a new command for the horizontal lines, change thickness here
+    \centering
+    \textsc{\LARGE Eindhoven University of Technology}\\[1.5cm]
+    \textsc{\Large 2IMI25 Constraint Programming}\\[1.5cm]
+    \textsc{\large Assignment 2 - Report}\\[3cm]
+    \begin{minipage}{0.4\textwidth}
+        \begin{flushleft} \large
+            \emph{Authors:}\\ [0.5cm]
+            Tianyu \textsc{Liu}\\
+            Student Number: 0937147\\
+            E-mail: t.liu.1@student.tue.nl\\ [0.2cm]
+            Li \textsc{Wang}\\
+            Student Number: 0977456\\
+            E-mail: l.wang.3@student.tue.nl\\ [0.2cm]
+        \end{flushleft}
+    \end{minipage}
+    
+    \vspace{15ex}
+    {\large \today}\\[3cm] % Date, change the \today to a set date if you want to be precise
+    \vfill
 \end{titlepage}
 %----------------------------------------------------------------------------------------------------------------------
 
@@ -76,37 +79,1372 @@ This report will discuss the second assignment of 2IMI25 - Constraint Programmin
 
 This report is divided into three sections. 
 \begin{itemize}
-	\item Introduction \\
-		This section briefly introduces the content of this report. 
-	\item Model Description \\
-		This section introduces the model we built of this assignment in detail, including the detailed description of all data structures, constraints, etc. Also, the reason why we chose a certain constraint is described in this section. 
-	\item Tests \\
-		This section describes the tests we did in building the model. We started from a small test instance and ended up with a large instance. We will explain the data in the tests and the result we got. 
+    \item Introduction \\
+        This section briefly introduces the content of this report. 
+    \item Model Description \\
+        This section introduces the model we built of this assignment in detail, including the detailed description of all data structures, constraints, etc. Also, the reason why we chose a certain constraint is described in this section. 
+    \item Tests \\
+        This section describes the tests we did in building the model. We started from a small test instance and ended up with a large instance. We will explain the data in the tests and the result we got. 
 \end{itemize}
 
 \newpage
 
 \section{Model Description}
 
-In this section, the detail of the model we built is described. The description goes into four main part: \textbf{Data Structures}, \textbf{Decision Variables and Expressions}, \textbf{Objective Functions} as well as \textbf{Constraints}. In each part, we explain the detail of the model, the reason why we chose this model and some choice that we discarded. 
+In this section, the detail of the model we built is described. The description goes into four main part: \textbf{Data Structures}, \textbf{Decision Variables and Expressions}, \textbf{Objective Functions} as well as \textbf{Constraints}. In each part, we explain the detail of the model, the reason why we chose this model and maybe some choices that we discarded. 
 
 \subsection{Data Structures}
 \twoline
 
-\subsection{Decision Variables and Expressions}
+In this model, apart from the data structures that are used to read test instance, we introduced some more data structures to find the solution. In this report, the description of the data structures that used to read instances is omitted, we start with the newly introduced data structures. 
+\begin{enumerate}[a.~]
+\item \texttt{DemandStep} and \texttt{DemSteps}
+\begin{lstlisting}
+tuple DemandStep {
+  key Demand demand;
+  key StepPrototype st; 
+}
+{DemandStep} DemSteps = 
+{<d, st> | d in Demands, st in Steps : 
+d.productId == st.productId};
+\end{lstlisting}
+Here the tuple \texttt{DemandStep} has two elements, both are keys. this tuple represent exactly one of the steps for one demand. Since in our cases, mostly one demand has more than one processing step, we decide use this tuple to match them together. 
+
+The set \texttt{DemSteps} is a two-tuple set of all possible combinations of \texttt{Demand} and \texttt{StepPrototype}. We used a condition \texttt{d.productId == st.productId} to match them together. In this case, for a specific demand, only the steps that the demand exactly needs will be put in this set, and this set is all possible steps for all demands from a specific instance. 
+
+We built this tuple and set for future use. In the following part if we want to find a step, we use this tuple-set only. 
+\item \texttt{DemandAlternative} and \texttt{DemAlter}
+\begin{lstlisting}
+tuple DemandAlternative {
+  key Demand demand;
+  key StepPrototype st;
+  key Alternative alternativ;
+}
+{DemandAlternative} DemAlters = {< d, st, alter > | 
+   d in Demands, st in Steps,
+   alter in Alternatives :
+   d.productId == st.productId && st.stepId == alter.stepId};
+\end{lstlisting}
+Here the tuple \texttt{DemandAlternative} is similar to the previous tuple \texttt{DemandStep}. It represents the combination of a demand, its steps and the alternatives for each step. 
+
+The three-tuple set \texttt{DemAlters} match the three elements together. And for a specific demand, we can use this set to find its possible alternatives. Also for a specific step. 
+\item \texttt{DemandAlternativePrecedence} and \texttt{DemAltPre}
+\begin{lstlisting}
+tuple DemandAlternativePrecedence {
+  key Demand demand;
+  key Precedence pre;
+}
+{DemandAlternativePrecedence} DemAltPre = {< d, pre > | < d, st,
+   alter > in DemAlters, 
+   < d1, st1, alter1 > in DemAlters, 
+   pre in Precedences :
+   d == d1 && pre.predecessorId == st.stepId && 
+   pre.successorId == st1.stepId};
+\end{lstlisting}
+Here the tuple \texttt{DemandAlternativePrecedence} and the set \texttt{DemAltPre} together represents the precedence of a demands' steps. We consider this steps as a chain, that is, for a specific demand, it has some steps, and the sequence of each step is defined. This chain is defined by \texttt{predecessorId} and \texttt{successorId} in \texttt{Precedence}. 
+
+In the set, we match them together by using two demand variables, in this case for a specific demand, we can use this set to have its sequence chain for future use.
+\item \texttt{StepStorage} and \texttt{StepStorages}
+\begin{lstlisting}
+tuple StepStorage {
+  key StorageProduction sp;
+  key DemandAlternativePrecedence dap;
+  StorageTank tank;
+}
+{StepStorage} StepStorages = {< sp, dap, tank > | 
+   sp in StorageProductions,
+   dap in DemAltPre, tank in StorageTanks :
+   sp.prodStepId == dap.pre.predecessorId && 
+   sp.consStepId == dap.pre.successorId && 
+   sp.storageTankId == tank.storageTankId};
+\end{lstlisting} 
+Here this data structure aims at matching each demand with all steps that possibly use a tank. Since for each demand, the tank usage only happens between two steps, and the tank usage is connected with the predecessor step and successor step. Hence we decided to use a chain that explained in the previous part, then we can add a tank usage between every two steps. We matched the \texttt{prodStepId} with \texttt{predecessorId}, then we can find all possible tank use steps for a specific demand by using this tuple and set. 
+
+\item \texttt{productIds}
+\begin{lstlisting}
+{int} productIds = {p.productId | p in Products};
+\end{lstlisting}
+The set \texttt{productIds} contains all product IDs that occur in the instance. Actually this set is not necessary, but somehow in our programming of the decision variables and decision expressions, we cannot use the "<>" method to index an element in a tuple or set. In this case, we added this \texttt{productIds} to help us to index an element. 
+\item \texttt{triplet}
+\begin{lstlisting}
+tuple triplet {
+  int loc1;
+  int loc2;
+  int value;
+}
+;
+{triplet} transitionTimesResource[r in Resources] = {
+   < setup.fromState, setup.toState, setup.setupTime > | 
+   setup in Setups :
+   setup.setupMatrixId == r.setupMatrixId};
+{triplet} transitionTimesStorage[tank in StorageTanks] = {
+   < setup.fromState, setup.toState, setup.setupTime > | 
+   setup in Setups :
+   setup.setupMatrixId == tank.setupMatrixId};
+\end{lstlisting}
+This triplet tuple and set is used to define the so-called transition times from lecture slides. It can read value from the matrix. In our case, it is the setup time for resource and the so-called clean time (in matrix it is also setup time) for storage tanks. 
+\end{enumerate}
+
+\subsection{Calculations}
 \twoline 
+
+In this model, there are also some variables we built for calculations. These variables may be used in decision variables or expressions or constraints. They highly increase the convenience for our modeling. This section explains these calculation variables. 
+\begin{enumerate}[a.~]
+\item \texttt{setupTimeResource} and \texttt{setupTimeStorage}
+\begin{lstlisting}
+int setupTimeResource[r in Resources]
+                     [preProd in productIds union {- 1}]
+                     [succProd in productIds] = 
+   sum ( < matrixId, fromState, toState, setupTime,
+   setupCost > in Setups :
+   matrixId == r.setupMatrixId && 
+   fromState == preProd && toState == succProd )
+   setupTime;
+int setupTimeStorage[tank in StorageTanks]
+                    [preProd in productIds]
+                    [succProd in productIds] = 
+   sum ( < matrixId, fromState, toState, setupTime,
+   setupCost > in Setups :
+   matrixId == tank.setupMatrixId && 
+   fromState == preProd && 
+   toState == succProd ) setupTime;
+\end{lstlisting}
+These two integer variables calculates the setup time for resources and clean time for storage tanks. It has three parameters, for resource it is resource, previous product and successor product. For tank it is tank, previous product and successor product. It just reads value from the setup matrix, match the previous product with from state and the successor product with to state then find its setup time for a specific input. 
+
+We also add an element \texttt{\{-1\}} to the set \texttt{productId} in this special case for resources, as we found for those steps that do not need a resource, the initial product ID is -1. This will helps to determine whether a step needs setup or not. 
+
+Here we used a \texttt{sum} statement as we could not find another way to read this value, even though it has only one element. We tried to use \texttt{ord} but that statement only works for one-dimension array not a two-dimension array like this. 
+\item \texttt{setupCostResource}
+\begin{lstlisting}
+int setupCostResource[r in Resources]
+                     [preProd in productIds union {- 1}]
+                     [succProd in productIds] = 
+   sum ( < matrixId, fromState, toState, setupTime,
+   setupCost > in Setups :
+   matrixId == r.setupMatrixId && 
+   fromState == preProd && toState == succProd )
+   setupCost;
+\end{lstlisting}
+This calculation is similar to the previous ones. It read values from the field \texttt{setupCost} of the setup matrix. In our first version, we added the setup cost for storage tanks, but later on we found it was not necessary. 
+\end{enumerate}
+
+\subsection{Decision Variables}
+\twoline 
+
+This section explains the decision variables we used. 
+\begin{enumerate}[a.~]
+\item \texttt{demandInterval}
+\begin{lstlisting}
+dvar interval demandInterval[demand in Demands] optional;
+\end{lstlisting}
+This interval represents the processing time for a demand. It has a parameter with type \texttt{Demand}. The presence of this interval represents whether the demand is delivered or not. 
+\item \texttt{demSteps}
+\begin{lstlisting}
+dvar interval demSteps[< d, st > in DemSteps] optional;
+\end{lstlisting}
+This interval represents the processing time for a specific step. It has a parameter with type of \texttt{DemandStep} that created by ourselves. By using this interval, we can know the processing time for a specific demand for a step. 
+\item \texttt{demAlters}
+\begin{lstlisting}
+dvar interval demAlters[< d, st, alter > in DemAlters] 
+                        optional 
+                        size ftoi ( ceil 
+                        ( alter.fixedProcessingTime + 
+                        d.quantity * 
+                        alter.variableProcessingTime ) );
+\end{lstlisting}
+This interval is at the lowest level. It represents the exact processing time for an alternative of a step. It has a size that calculated by the value from the instance table. The size of \texttt{demSteps} and the size of \texttt{demandInterval} is defined by this interval. 
+
+We also have another version such that we defined the size of \texttt{demAlters} in constraints, but somehow cannot give values. Hence we put the size here, this issue will be discussed in the constraint part. 
+\item \texttt{resources} and \texttt{tankSequence}
+\begin{lstlisting}
+dvar sequence resources[r in Resources] in 
+   all ( da in DemAlters :
+   r.resourceId == da.alternativ.resourceId ) 
+   demAlters[da] types 
+   all ( da in DemAlters : 
+   r.resourceId == da.alternativ.resourceId ) 
+   da.st.productId;
+  
+dvar sequence tankSequence[tank in StorageTanks] in 
+   all ( ss in StepStorages :
+   ss.tank == tank ) 
+   tankUse[ss] types 
+   all ( ss in StepStorages : ss.tank == tank ) 
+   ss.dap.demand.productId;
+\end{lstlisting}
+This two sequences are very similar. In this model we considered both resources and tanks as resources. The only differences between them are tanks have capacity. In this case, we define two sequence of them, with type \texttt{productId}, since the product put in tank or resources must satisfies the requirements. The only differences between these two sequence are the parameters. 
+\item \texttt{resourSetup}, \texttt{setupResourceSequence} and \texttt{tankSetup}
+\begin{lstlisting}
+dvar interval resourSetup[da in DemAlters] optional;
+dvar sequence setupResourceSequence[sr in SetupResources] in 
+  all ( da in DemAlters : 
+  sr.setupResourceId == da.st.setupResourceId )
+  resourSetup[da];
+dvar interval tankSetup[ss in StepStorages] optional;
+\end{lstlisting}
+Both resources and tanks require setup. Hence we defined two intervals to represent the setup times. For resources, the setup may also require a so-called setup resource. It can be considered as another kind of resource that will be used by a resource. Hence in this case we defined it as a sequence and may be used by the resource setup interval. 
+\end{enumerate}
 
 \subsection{Objective Functions}
 \twoline 
 
+Some functions are also used in this model to calculate values. 
+\begin{enumerate}[a.~]
+\item \texttt{storageTank}
+\begin{lstlisting}
+cumulFunction storageTank[tank in StorageTanks] = 
+   sum ( ss in StepStorages :
+   ss.tank == tank ) 
+   pulse ( tankUse[ss], ss.dap.demand.quantity );
+\end{lstlisting}
+This cumul function is used to calculate the quantity of product in a tank. It goes through the interval \texttt{tankUse[ss]}. When for a specific step in the set \texttt{StepStorages}, the tank is used, then the function will calculate the corresponding demand quantity and tank Id. 
+\item \texttt{tardinessCost}
+\begin{lstlisting}
+pwlFunction tardinessCost[d in Demands] = 
+  piecewise {0 -> d.dueTime;
+  d.tardinessVariableCost}
+  ( d.dueTime,0 );
+\end{lstlisting}
+This pwl function is a piecewise function. In this case it is a very simple linear function that used to calculate the tardiness cost for a demand. It simply goes through the due time with slope \texttt{tardinessVariableCost} from the instance table, before due time, it remains 0. 
+\end{enumerate}
+
+\subsection{Decision Expressions}
+\begin{enumerate}
+\item \texttt{prevProduct} and \texttt{prevProductTank}
+\begin{lstlisting}
+dexpr int prevProduct[da in DemAlters] = 
+   typeOfPrev ( resources
+   [item ( Resources, < da.alternativ.resourceId > )], 
+   demAlters[da], 
+   item ( Resources, 
+   < da.alternativ.resourceId > ).initialProductId );
+dexpr int prevProductTank[ss in StepStorages] = 
+   typeOfPrev ( tankSequence
+   [item ( StorageTanks, < ss.tank.storageTankId > )], 
+   tankUse[ss], 
+   item ( StorageTanks, 
+   < ss.tank.storageTankId > ).initialProductId );
+\end{lstlisting}
+These two expressions are used to calculate the previous product on a sequence. One is for resources, the other is for tanks. Since changing product on resources or tank requires a setup, this is necessary. If one interval is the first one, then just return the initial product id. The returned type value will be used to define whether a resource or tank needs setup or not as well as setup time. 
+\item \texttt{alterToBeSetup} and \texttt{tankToBeSetup}
+\begin{lstlisting}
+dexpr int alterToBeSetup[da in DemAlters] = 
+   presenceOf ( demAlters[da] ) && 
+   prevProduct[da] >= 0;
+dexpr int tankToBeSetup[ss in StepStorages] = 
+   presenceOf ( tankUse[ss] ) && 
+   ss.dap.demand.productId != prevProductTank[ss];
+\end{lstlisting}
+This is a value to determine whether a resource or tank needs setup. This identified by a specific step or tank usage. For resources, in some cases even the previous product is the same as the next one, it requires setup, but for tanks it is not. Hence for tanks it has more conditions. 
+\item \textbf{Non-Delivery cost calculation}
+\begin{lstlisting}
+dexpr float nonDeliveryCost[demand in Demands] = 
+  demand.quantity * 
+  demand.nonDeliveryVariableCost * 
+  ! presenceOf ( demandInterval[demand] );
+dexpr float TotalNonDeliveryCost = 
+   sum ( demand in Demands )
+   nonDeliveryCost[demand];
+\end{lstlisting}
+The non delivery cost is calculated by the value read from the instance table. Only when the demand interval is not present, this cost will be calculated. And the total cost is the sum of all demands. 
+\item \textbf{Processing cost calculation}
+\begin{lstlisting}
+dexpr float processingCost[da in DemAlters] = 
+  ( da.alternativ.fixedProcessingCost + 
+  ( da.alternativ.variableProcessingCost * 
+  da.demand.quantity ) ) * 
+  presenceOf ( demAlters[da] );
+dexpr float TotalProcessingCost = 
+sum ( da in DemAlters ) processingCost[da];
+\end{lstlisting}
+The processing cost depends on different alternatives. In our model, we first calculate the processing cost for each alternative (the chosen one, which is presented), then sum them together.
+\item \textbf{Setup Cost calculation}
+\begin{lstlisting}
+dexpr float resourceSetupCost[da in DemAlters] = 
+   presenceOf ( resourSetup[da] ) * 
+   setupCostResource[< da.alternativ.resourceId >]
+   [prevProduct[da]][da.st.productId];
+dexpr float TotalSetupCost = 
+   sum ( da in DemAlters ) resourceSetupCost[da];
+\end{lstlisting} 
+When a resource needs setup, then its setup interval is presented. And the calculation may calculate the value by using the calculation described in previous part. Then the total cost is the sum of all presented setup cost. 
+\item \textbf{Tardiness Cost Calculation}
+\begin{lstlisting}
+dexpr float tardinessCostCal[d in Demands] = 
+   endEval ( demandInterval[d], tardinessCost[d] );
+dexpr float TotalTardinessCost = 
+   sum ( d in Demands ) tardinessCostCal[d];
+\end{lstlisting}
+The tardiness cost is calculated by the explained pwlFuntion. We simply invoke that function for each demand, if the end time of a demand (i.e. delivery time) is after due time, then the tardiness cost is calculated. The total cost is sum of each demand's cost. 
+\item \textbf{Weighted costs}
+\begin{lstlisting}
+dexpr float WeightedNonDeliveryCost = 
+  TotalNonDeliveryCost * item 
+  ( CriterionWeights, 
+  ord ( CriterionWeights, < "NonDeliveryCost" > ) ).weight;
+dexpr float WeightedProcessingCost = 
+  TotalProcessingCost * item 
+  ( CriterionWeights, 
+  ord ( CriterionWeights, < "ProcessingCost" > ) ).weight;
+dexpr float WeightedSetupCost = 
+  TotalSetupCost * item ( CriterionWeights, 
+  ord ( CriterionWeights, < "ProcessingCost" > ) ).weight;
+dexpr float WeightedTardinessCost = 
+  TotalTardinessCost * item 
+  ( CriterionWeights, 
+  ord ( CriterionWeights, < "TardinessCost" > ) ).weight;
+dexpr float sumWeighted = 
+  WeightedNonDeliveryCost + 
+  WeightedProcessingCost + 
+  WeightedSetupCost + 
+  WeightedTardinessCost;
+\end{lstlisting}
+The weighted cost is the total cost times the weight value. The weight value is read from instance table by using \texttt{item} command. Then the sum cost is the sum of all four weighted costs. And the sum value is what we will minimize. 
+\end{enumerate}
+
 \subsection{Constraints}
 
+In this section, the constraints that helped us to generate a good result are explained. We start from general constraints holds for the whole model, and then the specific constraints that holds for some special requirements. 
 
+\begin{enumerate}[a.~]
+\item \textbf{General constraints}
+The general constraints are used for some bounds (not upper or lower bounds) in order to increase performance. 
+\begin{lstlisting}
+forall ( d in Demands )
+    d.quantity > max ( tank in StorageTanks ) tank.quantityMax 
+    => ! presenceOf ( demandInterval[d] );
+
+forall ( d in Demands) {
+    endOf ( demandInterval[d] ) >= d.deliveryMin;
+    endOf ( demandInterval[d] ) <= d.deliveryMax;
+  }
+\end{lstlisting}
+For some cases (not occurs in our test cases), if a demand quantity is  than any tanks' max quantity, then the delivery may not be possible, then just choose not deliver. And for all demands that will be delivered (has a start time and end time), it must be in the delivery window. 
+\item \textbf{Time spanning constraints}
+\begin{lstlisting}
+forall ( d in Demands )
+  span ( demandInterval[d], 
+  all ( st in Steps : st.productId == d.productId )
+  demSteps[< d, st >] );
+
+forall ( < d, st > in DemSteps )
+  presenceOf ( demandInterval[d] ) => 
+  presenceOf ( demSteps[< d, st >] );
+
+forall ( < d, st > in DemSteps )
+  alternative ( demSteps[< d, st >], 
+  all ( alter in Alternatives :
+  st.stepId == alter.stepId ) 
+  demAlters[< d, st, alter >] );
+
+forall ( pre in Precedences, ds1, ds2 in DemSteps :
+  ds1.demand == ds2.demand && 
+  ds1.st.stepId == pre.predecessorId && 
+  ds2.st.stepId == pre.successorId )
+  endBeforeStart ( demSteps[ds1], demSteps[ds2], pre.delayMin );
+\end{lstlisting}
+We have to first span all steps for a demand. And for a demand, if it is considered to be delivered, then all its steps should be delivered. In the constraint it is a one direction implication. 
+
+Afterwards, we have to choose exact one alternative for one step, here we use the command \texttt{Alternative} to choose one alternative for each present step. 
+
+Then for each present step, it must follow a sequence that defined by the Precedences, and the delay time is also included. 
+\item \textbf{Constraints on Storage uses}
+\begin{lstlisting}
+forall ( ss in StepStorages )
+  ! presenceOf ( demandInterval[ss.dap.demand] ) => 
+  ! presenceOf ( tankUse[ss] );
+
+forall ( dap in DemAltPre : dap.pre.delayMin > 0 )
+  presenceOf ( demandInterval[dap.demand] ) => 
+  ( sum ( ss in StepStorages :
+  ss.dap == dap ) presenceOf ( tankUse[ss] ) == 1 );
+forall ( dap in DemAltPre : dap.pre.delayMin == 0 )
+  presenceOf ( demandInterval[dap.demand] ) => 
+  ( sum ( ss in StepStorages :
+  ss.dap == dap ) presenceOf ( tankUse[ss] ) <= 1 );
+
+forall ( ss in StepStorages )
+  startAtEnd ( tankUse[ss], tankSetup[ss] );
+
+forall ( tank in StorageTanks )
+  storageTank[tank] <= tank.quantityMax;
+
+forall ( ss in StepStorages )
+  alwaysIn ( storageTank[ss.tank], tankSetup[ss], 0, 0 );
+
+forall ( ss in StepStorages )
+  presenceOf ( tankUse[ss] ) => sizeOf ( tankUse[ss] ) > 0;
+
+forall ( ss in StepStorages, ds in DemSteps :
+  ss.dap.demand == ds.demand && 
+  ss.dap.pre.predecessorId == ds.st.stepId )
+  startAtEnd ( tankUse[ss], demSteps[ds] );
+forall ( ss in StepStorages, ds in DemSteps :
+  ss.dap.demand == ds.demand && 
+  ss.dap.pre.successorId == ds.st.stepId )
+  startAtEnd ( demSteps[ds], tankUse[ss] );
+\end{lstlisting}
+We have to limit the presence of tank usage. If a demand is not present, then the tank usage about this demand should not present. 
+
+We have also to limit the number of tank use at the same time to 1, if the delay time is greater than 0. 
+
+The tank use must directly follow the setup. 
+
+We also have at any time, the tank's storage must not exceed the tank's quantity. Also, when the tank is being cleaned (being setup), it must be empty. Here we use \texttt{alwaysIn} command to define this situation. 
+
+In some tests, the solver gives us a solution such that some step may use a tank with size 0, but it may have setup cost. We want to avoid this situation, so we added constraint such that the use of tank must have at least time 1. 
+
+The last part for these constraints shows that the tank use must between two steps and without any gaps. 
+\item \textbf{Constraints on setup issues}
+\begin{lstlisting}
+forall ( da in DemAlters )
+  ( alterToBeSetup[da] == 1 ) => 
+  presenceOf ( resourSetup[da] );
+  
+forall ( da in DemAlters )
+  presenceOf ( resourSetup[da] ) => 
+  lengthOf ( resourSetup[da] ) == 
+  setupTimeResource[< da.alternativ.resourceId >]
+  [prevProduct[da]]
+  [da.st.productId];
+
+forall ( da in DemAlters )
+  startAtEnd ( demAlters[da], resourSetup[da] );
+
+forall ( ss in StepStorages )
+  ( tankToBeSetup[ss] == 1 ) => 
+  presenceOf ( tankSetup[ss] );
+
+forall ( ss in StepStorages )
+  presenceOf ( tankSetup[ss] ) => 
+  lengthOf ( tankSetup[ss] ) == 
+  setupTimeStorage[< ss.tank.storageTankId >]
+  [prevProductTank[ss]]
+  [ss.dap.demand.productId];
+
+forall ( resource in Resources )
+  noOverlap ( resources[resource], 
+  transitionTimesResource[resource], 0 );
+
+forall ( ss1, ss2 in StepStorages :
+     ss1.dap.demand.productId != 
+     ss2.dap.demand.productId && 
+     ss1.tank == ss2.tank )
+    noOverlap ( tankSequence[ss1.tank], 
+    transitionTimesStorage[ss1.tank], 0 );
+
+forall ( sr in SetupResources )
+    noOverlap ( setupResourceSequence[sr] );
+\end{lstlisting}
+For this part, the constraints are all about setups. 
+
+If an alternative needs setup, then its setup interval is present. We have the time of a setup is read from the calculation we have before. 
+
+An alternative needs a setup then it is directly followed by a resource setup. These also holds for a tank setup, so the constraints for tank setup is very similar to the resources' setup. 
+
+We also have the exclusive property for the use of tank and resources, the no overlap command is used for that. 
+
+For resources, the setupResources is also required in some cases, and it is also exclusive. So there is a constraint about it, similar to the no overlap command for resources and tanks. 
+\end{enumerate}
 
 \newpage
 
 \section{Tests}
 
-In this section, the detailed test result including the description of the test, the result and conclusion of the test goes here. We start from a small instance \textbf{STI} and go through all four large instance \textbf{LTI}. 
+In this section, the detailed test result including the description of the test, the result and conclusion of the test goes here. We start from some small instances \textbf{STI} and go through all four large instance \textbf{LTI}. For the \textbf{STIs} we only perform the result with default settings, and for large \textbf{LTIs} we give comparisons with different settings and our best choice as well as conclusions. For each \textbf{LTI}, we used the so-called \textbf{control variable method}, that is, changed only one setting each time, and compare them. Then we used the best settings and ran the test again in order to have the best result. 
+
+Since the test performance highly depends on the CPU and Memory of the testing computer used, here we list the hardware of the computer we used to test: 
+
+CPU: Intel Core i5-6600K, 4 Cores at 4.50GHz \\
+Memory: 16GB Dual-Channel DDR4 at 2666MHz\\
+Operating System: Windows 10 Pro 64bit
+
+This section also includes a conclusion and discussion on all these test cases. 
+
+\subsection{Some alternative constraints in test period}
+
+We have some alternative models, with more constraints. However, in our test period, we found some constraints that we added gave worse performance. So we discarded them and they are discussed here. 
+
+\subsubsection{Bounds}
+In our first model, we defined an upper bound and lower bound as: 
+\begin{lstlisting}
+sumWeighted >= (sum(ds in DemSteps)minimizedProcCostStep[ds]) / 
+        card(Demands);
+sumWeighted <= sum(d in Demands)d.nonDeliveryVariableCost * 
+d.quantity; 
+\end{lstlisting}
+As the worst case is when all demands are not delivery, then only non-delivery cost will be calculated. And the best case is the same as lower bound in all time spanning problem, is the arithmetic mean value of all steps, which is the sum of all steps that will be done divided by the number of demands. In this case we do not consider the time arrangement, we assume all demands can be processed at the same time.
+
+However, in our case, if we add this bounds, the output solution value for instances is worse (i.e. greater) than without this bounds. This test used "Extended" inference level. The result difference is shown in Table \ref{boundsdiff}
+\begin{table}
+    \centering
+    \caption{Result difference with/without bounds on instances}
+    \label{boundsdiff}
+    \begin{tabular}{|c|c|c|c|c|c|}
+    \hline
+    With/without? & Instance0 & Instance 1 & Instance 2 & Instance 3 & Instance 4 \\
+    \hline
+    1 & 1495.5 & 5192.5 & 22483.5 & 35656 & No value \\
+    \hline
+    0 & 1495.167 & 4695 & 16458.5 & 42364 & 59261 \\
+    \hline
+    \end{tabular}
+\end{table}
+
+Hence even though in some instances it gave better performance, it gave no value for instance 4, hence we decided to discard it. 
+
+\subsubsection{Tank setup issue}
+In our earlier model, we have a constraint like this: 
+\begin{lstlisting}
+forall (ds in DemSteps, ss in StepStorages : 
+  ss.dap.demand == ds.demand)
+  (startOf(demSteps[ds]) <= startOf(tankUse[ss]) && 
+  endOf(demSteps[ds]) <= startOf(tankUse[ss])) || 
+  (startOf(demSteps[ds]) >= endOf(tankUse[ss]) && 
+  endOf(demSteps[ds]) >= endOf(tankUse[ss]));
+\end{lstlisting}
+At this moment we also have the constraint like this, which is explained in section 2: 
+\begin{lstlisting}
+forall ( ss in StepStorages )
+  alwaysIn ( storageTank[ss.tank], 
+  tankSetup[ss], 0, 0 );
+\end{lstlisting}
+This constraint limits all steps which are possible to use a tank should not pass the setup period of a tank. Which makes that only when a tank is empty, it can be setup. 
+
+In the test period we decided to test both of them and see whether a redundant constraint makes better performance. 
+
+And we tested all combinations of the model, the test is also using "Extended" inference level in Table \ref{tankissue}
+\begin{table}
+    \centering
+    \caption{Test result on tank issue constraints}
+    \label{tankissue}
+    \begin{tabular}{|c|c|c|c|c|c|c|}
+    \hline
+    With1? & With2? & Instance 0 & Instance 1 & Instance 2 & Instance 3 & Instance 4 \\
+    \hline
+    0 & 0 & 1513.5 & 5852 & 13700.5 & 30464 & 65176 \\
+    \hline
+    0 & 1 & 1495.167 & 4695 & 16458.5 & 42364 & 59261 \\
+    \hline
+    1 & 0 & 1473.667 & 6874.5 & 15944 & 43704.5 & 63467 \\
+    \hline
+    1 & 1 & 1471.667 & 5584 & 13007 & 42170 & 65331 \\
+    \end{tabular}
+\end{table}
+According to the result, if we have both constraints, the general performance is better than having any one of them. Hence we decide to add both constraints in our model in the final version.
+
+\subsubsection{Conclusions on alternative models}
+
+We also had more alternative constraints, but they are either wrong constraints or have a different meaning from the assignment description. Hence we just deleted them and they are not shown in this report. 
+
+In our case, we found that in some cases a bound may decrease the performance, and normally a redundant constraint can slightly increase the performance. But these also various on the model settings, which will be discussed in the next sections. 
+
+\subsection{Test on Instance0.xls}
+
+This test is on the given instance Instance0.xls. We tested on it by changing settings. 
+
+\subsubsection{Test on default settings}
+
+Firstly we tested by default settings given by the assignment description. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{default0}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on default settings for instance Instance0.xls}
+    \label{default0}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        1484.167 & 6s & 1932 & 156 & 121793 & 144 & 12 & Default \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different inference levels}
+
+In this part we remained all settings except the inference level. In our test, we change inference level by changing the parameter \texttt{DefaultInferenceLevel}. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.DefaultInferenceLevel = 
+    "Extended" / "Low" / "Medium" / "Basic";
+}
+\end{lstlisting}
+
+The result of this part is shown in Table \ref{diffInfer0}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on different inference levels for instance Instance0.xls}
+    \label{diffInfer0}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        1484.17 & 6s & 1932 & 156 & 118116 & 144 & 12 & Default(Basic) \\
+        \hline 
+        1484.167 & 6s & 1932 & 156 & 120166 & 144 & 12 & Low \\
+        \hline
+        1495.167 & 6s & 1932 & 156 & 104540 & 144 & 12 & Medium \\
+        \hline
+        1471.667 & 6s & 1932 & 156 & 69682 & 144 & 12 & Extended \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different time limits with Default Inference Level}
+
+In this part, we modified the time limits, and change the inference level back to default. As we believe, longer time may make better result. We start with default time limit, then 2 times default limit time. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 6s / 12s / 24s; 
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{diffTime0}.
+\begin{table}
+    \centering
+    \caption{Test result on different time limits for instance Instance0.xls}
+    \label{diffTime0}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        1484.167 & 6s & 1932 & 156 & 118394 & 144 & 12 & default \\
+        \hline 
+        1458.333 & 12s & 1932 & 156 & 239780 & 144 & 12 & default \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different search mode with Default Inference Level}
+
+In this part, we changed different search method and see the performance differences. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.SearchConfiguration = 
+    "DepthFirst" / "Restart" / "MultiPoint" / "Auto";
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{diffSear0}
+
+\begin{table}
+    \centering
+    \caption{Test result on different search methods for instance Instance0.xls}
+    \label{diffSear0}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & SearchMode \\
+        \hline
+        1539.167 & 6s & 1932 & 156 & 114995 & 144 & 12 & DepthFirst \\
+        \hline 
+        1503.667 & 6s & 1932 & 156 & 123409 & 144 & 12 & Restart \\
+        \hline
+        1458.333 & 6s & 1932 & 156 & 109378 & 144 & 12 & MultiPoint \\
+        \hline
+        1484.167 & 6s & 1932 & 156 & 119904 & 144 & 12 & Auto \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Best Result}
+
+In this part, we tried to choose the best settings above and see whether it is possible to find a better solution within required time limit. Finally we got this setting: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 6; 
+    cp.param.SearchConfiguration = "MultiPoint";
+}
+\end{lstlisting}
+
+The result is in Table \ref{best0}. It is the best result we ever found.
+
+\begin{table}
+    \centering
+    \caption{Test result on best setting for instance Instance0.xls}
+    \label{best0}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & Inference \\
+        \hline
+        1458.333 & 6s & 1932 & 156 & 108905 & 144 & 12 & default \\
+        \hline
+    \end{tabular}
+\end{table}
+
+However, if the time limit is as default (equal to number of demands), then extended inference level gives a better solution. Also, according to this instance, longer solving time did not give a much better solution, so we concluded that our model has a good performance. 
+
+\subsection{Test on Instance1.xls}
+
+This test is on the given instance Instance1.xls. We tested on it by changing settings. 
+
+\subsubsection{Test on default settings}
+
+Firstly we tested by default settings given by the assignment description. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{default1}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on default settings for instance Instance1.xls}
+    \label{default1}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        7480 & 24s & 8772 & 588 & 238096 & 576 & 12 & Default \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different inference levels}
+
+In this part we remained all settings except the inference level. In our test, we change inference level by changing the parameter \texttt{DefaultInferenceLevel}. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.DefaultInferenceLevel = 
+    "Extended" / "Low" / "Medium" / "Basic";
+}
+\end{lstlisting}
+
+The result of this part is shown in Table \ref{diffInfer1}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on different inference levels for instance Instance1.xls}
+    \label{diffInfer1}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        7480 & 24s & 8772 & 588 & 238080 & 576 & 12 & Default(Basic) \\
+        \hline 
+        5983 & 24s & 8772 & 588 & 241087 & 576 & 12 & Low \\
+        \hline
+        4903 & 24s & 8772 & 588 & 170867 & 576 & 12 & Medium \\
+        \hline
+        5584 & 24s & 8772 & 588 & 69723 & 576 & 12 & Extended \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different time limits with Default Inference Level}
+
+In this part, we modified the time limits, and change the inference level back to default. As we believe, longer time may make better result. We start with default time limit, then 2 times default limit time. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 24s/48s; 
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{diffTime1}.
+\begin{table}
+    \centering
+    \caption{Test result on different time limits for instance Instance1.xls}
+    \label{diffTime1}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        7887 & 24s & 8772 & 588 & 232567 & 576 & 12 & default \\
+        \hline 
+        3474.5 & 48s & 8772 & 588 & 440680 & 576 & 12 & default \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different search mode with Default Inference Level}
+
+In this part, we changed different search method and see the performance differences. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.SearchConfiguration = 
+    "DepthFirst" / "Restart" / "MultiPoint" / "Auto";
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{diffSear1}
+
+\begin{table}
+    \centering
+    \caption{Test result on different search methods for instance Instance1.xls}
+    \label{diffSear1}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & SearchMode \\
+        \hline
+        5858.5 & 24s & 8772 & 588 & 154597 & 576 & 12 & DepthFirst \\
+        \hline 
+        5421.5 & 24s & 8772 & 588 & 163724 & 576 & 12 & Restart \\
+        \hline
+        6166.5 & 24s & 8772 & 588 & 132171 & 576 & 12 & MultiPoint \\
+        \hline
+        7887 & 24s & 8772 & 588 & 233884 & 576 & 12 & Auto \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Best Result}
+
+In this part, we tried to choose the best settings above and see whether it is possible to find a better solution within required time limit. Finally we got this setting: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 24; 
+    cp.param.DefaultInferenceLevel = "Medium";
+}
+\end{lstlisting}
+
+The result is in Table \ref{best1}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on best setting for instance Instance1.xls}
+    \label{best1}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & Inference \\
+        \hline
+        4903 & 24s & 8772 & 588 & 170110 & 576 & 12 & Medium \\
+        \hline
+    \end{tabular}
+\end{table}
+
+According to this instance, we found that 48s running gave a considerable better solution than 24s. However, by changing the search model and inference level, we can decrease this difference. We considered the performance for this instance moderate.  
+
+\subsection{Test on Instance2.xls}
+
+This test is on the given instance Instance2.xls. We tested on it by changing settings. 
+
+\subsubsection{Test on default settings}
+
+Firstly we tested by default settings given by the assignment description. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{default2}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on default settings for instance Instance2.xls}
+    \label{default2}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        No Value & 32s & 12708 & 780 & 786198 & 768 & 12 & Default \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different inference levels}
+
+In this part we remained all settings except the inference level. In our test, we change inference level by changing the parameter \texttt{DefaultInferenceLevel}. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.DefaultInferenceLevel = 
+    "Extended" / "Low" / "Medium" / "Basic";
+}
+\end{lstlisting}
+
+The result of this part is shown in Table \ref{diffInfer2}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on different inference levels for instance Instance2.xls}
+    \label{diffInfer2}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        No Value & 32s & 12708 & 780 & 786198 & 768 & 12 & Default(Basic) \\
+        \hline 
+        No Value & 32s & 12708 & 780 & 783582 & 768 & 12 & Low \\
+        \hline
+        20401.5 & 32s & 12708 & 780 & 205626 & 768 & 12 & Medium \\
+        \hline
+        13007 & 32s & 12708 & 780 & 80117 & 768 & 12 & Extended \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different time limits with Default Inference Level}
+
+In this part, we modified the time limits, and change the inference level back to default. As we believe, longer time may make better result. We start with default time limit, then 2 times default limit time. Since default inference cannot give answer of this instance, we added another two test cases that the inference level is "Medium". The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 32s/64s; 
+    cp.param.DefaultInferenceLevel = "Basic" / "Medium";
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{diffTime2}.
+\begin{table}
+    \centering
+    \caption{Test result on different time limits for instance Instance1.xls}
+    \label{diffTime2}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        No Value & 32s & 12708 & 780 & 782902 & 768 & 12 & default \\
+        \hline 
+        No Value & 64s & 12708 & 780 & 1506470 & 768 & 12 & default \\
+        \hline
+        20401.5 & 32s & 12708 & 780 & 205888 & 768 & 12 & Medium \\
+        \hline 
+        12868 & 64s & 12708 & 780 & 378736 & 768 & 12 & Medium \\
+        \hline 
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different search mode with Default Inference Level}
+
+In this part, we changed different search method and see the performance differences. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.SearchConfiguration = 
+    "DepthFirst" / "Restart" / "MultiPoint" / "Auto";
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{diffSear2}
+
+\begin{table}
+    \centering
+    \caption{Test result on different search methods for instance Instance1.xls}
+    \label{diffSear2}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & SearchMode \\
+        \hline
+        45088.5 & 32s & 12708 & 780 & 830120 & 768 & 12 & DepthFirst \\
+        \hline 
+        14090.5 & 32s & 12708 & 780 & 448814 & 768 & 12 & Restart \\
+        \hline
+        No Value & 32s & 12708 & 780 & 875855 & 768 & 12 & MultiPoint \\
+        \hline
+        No Value & 32s & 12708 & 780 & 783625 & 768 & 12 & Auto \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Best Result}
+
+In this part, we tried to choose the best settings above and see whether it is possible to find a better solution within required time limit. Finally we got this setting: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 32; 
+    cp.param.DefaultInferenceLevel = "Extended";
+}
+\end{lstlisting}
+
+The result is in Table \ref{best2}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on best setting for instance Instance2.xls}
+    \label{best2}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & Inference \\
+        \hline
+        13007 & 32s & 12708 & 780 & 79286 & 768 & 12 & Extended \\
+        \hline
+    \end{tabular}
+\end{table}
+
+For this instance, our model performed a good solution. As if a proper inference level is chosen, the result in 32s is even better than result in 64s. However, for some settings, the model cannot compute a solution. 
+
+\subsection{Test on Instance3.xls}
+
+This test is on the given instance Instance1.xls. We tested on it by changing settings. 
+
+\subsubsection{Test on default settings}
+
+Firstly we tested by default settings given by the assignment description. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{default3}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on default settings for instance Instance3.xls}
+    \label{default3}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        38124.5 & 32s & 15846 & 910 & 269409 & 896 & 14 & Default \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different inference levels}
+
+In this part we remained all settings except the inference level. In our test, we change inference level by changing the parameter \texttt{DefaultInferenceLevel}. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.DefaultInferenceLevel = 
+    "Extended" / "Low" / "Medium" / "Basic";
+}
+\end{lstlisting}
+
+The result of this part is shown in Table \ref{diffInfer3}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on different inference levels for instance Instance3.xls}
+    \label{diffInfer3}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        38225 & 32s & 15846 & 910 & 268093 & 896 & 14 & Default(Basic) \\
+        \hline 
+        38225 & 32s & 15846 & 910 & 268258 & 896 & 14 & Low \\
+        \hline
+        24347.5 & 32s & 15846 & 910 & 175033 & 896 & 14 & Medium \\
+        \hline
+        42170 & 32s & 15846 & 910 & 75326 & 896 & 14 & Extended \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different time limits with Default Inference Level}
+
+In this part, we modified the time limits, and change the inference level back to default. As we believe, longer time may make better result. We start with default time limit, then 2 times default limit time. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 32s/64s; 
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{diffTime3}.
+\begin{table}
+    \centering
+    \caption{Test result on different time limits for instance Instance3.xls}
+    \label{diffTime3}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        38225 & 32s & 15846 & 910 & 267685 & 896 & 14 & default \\
+        \hline 
+        29039 & 64s & 15846 & 910 & 405414 & 896 & 14 & default \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different search mode with Default Inference Level}
+
+In this part, we changed different search method and see the performance differences. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.SearchConfiguration = 
+    "DepthFirst" / "Restart" / "MultiPoint" / "Auto";
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{diffSear3}
+
+\begin{table}
+    \centering
+    \caption{Test result on different search methods for instance Instance3.xls}
+    \label{diffSear3}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & SearchMode \\
+        \hline
+        55118 & 32s & 15846 & 910 & 622170 & 896 & 14 & DepthFirst \\
+        \hline 
+        55118 & 32s & 15846 & 910 & 624047 & 896 & 14 & Restart \\
+        \hline
+        64021 & 32s & 15846 & 910 & 668022 & 896 & 14 & MultiPoint \\
+        \hline
+        38225 & 32s & 15846 & 910 & 268052 & 896 & 14 & Auto \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Best Result}
+
+In this part, we tried to choose the best settings above and see whether it is possible to find a better solution within required time limit. Finally we got this setting: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 32s; 
+    cp.param.DefaultInferenceLevel = "Medium";
+}
+\end{lstlisting}
+
+The result is in Table \ref{best3}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on best setting for instance Instance3.xls}
+    \label{best3}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & Inference \\
+        \hline
+        24382.5 & 32s & 15846 & 910 & 173772 & 896 & 14 & Medium \\
+        \hline
+    \end{tabular}
+\end{table}
+
+For this instance, our model with Medium inference level gets a very good performance. The solution given is much better than in other settings of 64s. 
+
+\subsection{Test on Instance4.xls}
+
+This test is on the given instance Instance4.xls. We tested on it by changing settings. 
+
+\subsubsection{Test on default settings}
+
+Firstly we tested by default settings given by the assignment description. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{default4}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on default settings for instance Instance4.xls}
+    \label{default4}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        No Value & 40s & 21238 & 1134 & 691541 & 1120 & 14 & Default \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different inference levels}
+
+In this part we remained all settings except the inference level. In our test, we change inference level by changing the parameter \texttt{DefaultInferenceLevel}. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.DefaultInferenceLevel = 
+    "Extended" / "Low" / "Medium" / "Basic";
+}
+\end{lstlisting}
+
+The result of this part is shown in Table \ref{diffInfer4}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on different inference levels for instance Instance4.xls}
+    \label{diffInfer4}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        No Value & 40s & 21238 & 1134 & 689992 & 1120 & 14 & Default(Basic) \\
+        \hline 
+        No Value & 40s & 21238 & 1134 & 689351 & 1120 & 14 & Low \\
+        \hline
+        59327 & 40s & 21238 & 1134 & 222028 & 1120 & 14 & Medium \\
+        \hline
+        65331 & 40s & 21238 & 1134 & 82024 & 1120 & 14 & Extended \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different time limits with Default Inference Level}
+
+In this part, we modified the time limits, and change the inference level back to default. As we believe, longer time may make better result. We start with default time limit, then 2 times default limit time. Since the Low and Basic inference level may not give a solution, we did this test in Medium inference level. 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 40s/80s; 
+    cp.param.DefaultInferenceLevel = "Medium";
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{diffTime4}.
+\begin{table}
+    \centering
+    \caption{Test result on different time limits for instance Instance4.xls}
+    \label{diffTime4}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & \#Inference \\
+        \hline
+        59399 & 40s & 21238 & 1134 & 219002 & 1120 & 14 & Medium \\
+        \hline 
+        54043 & 80s & 21238 & 1134 & 386251 & 1120 & 14 & Medium \\
+        \hline
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Test on different search mode with Default Inference Level}
+
+In this part, we changed different search method and see the performance differences. This test we also used "Medium" inference level. The used settings are: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = Opl.card(Demands); 
+    cp.param.DefaultInferenceLevel = "Medium";
+    cp.param.SearchConfiguration = 
+    "DepthFirst" / "Restart" / "MultiPoint" / "Auto";
+}
+\end{lstlisting}
+
+The result is shown in Table \ref{diffSear4}
+
+\begin{table}
+    \centering
+    \caption{Test result on different search methods for instance Instance4.xls}
+    \label{diffSear4}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & SearchMode \\
+        \hline
+        31822 & 40s & 21238 & 1134 & 148369 & 1120 & 14 & DepthFirst \\
+        \hline 
+        63368 & 40s & 21238 & 1134 & 172380 & 1120 & 14 & Restart \\
+        \hline
+        52353 & 40s & 21238 & 1134 & 177756 & 1120 & 14 & MultiPoint \\
+        \hline
+        59327 & 40s & 21238 & 1134 & 221352 & 1120 & 14 & Auto \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Best Result}
+
+In this part, we tried to choose the best settings above and see whether it is possible to find a better solution within required time limit. Finally we got this setting: 
+
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 40s; 
+    cp.param.DefaultInferenceLevel = "Medium";
+    cp.param.SearchConfiguration = "DepthFirst";
+}
+\end{lstlisting}
+
+The result is in Table \ref{best4}. 
+
+\begin{table}
+    \centering
+    \caption{Test result on best setting for instance Instance4.xls}
+    \label{best4}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        Solution & Time & \#Constraints & \#Vars & \#Fails & \#Intervals & \#Seq. & Inference \\
+        \hline
+        31822 & 40s & 21238 & 1134 & 142631 & 1120 & 14 & Medium \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\section{Conclusions and Discussions}
+
+Due to the limit of time, we cannot test all possible combinations of the settings (it may take a huge amount of time). There are also some limits on the performance testing: 
+\begin{enumerate}[a.~]
+\item When we were testing, the computer was also processing something else. As this may affect the performance. 
+\item We used manually testing method since we didn't find the best way to do automated test. There may be some mistakes when recoding the data. 
+\item Our original plan was to use control variable method, however due to some issues, we have to change more than one settings in two different tests. This may also make the result not accurate as it should be. 
+\end{enumerate}
+
+This section then gives a conclusion on all test instance, including the best settings we ever tested on each instance and the influences on changing specific settings. 
+
+\subsection{Conclusion on Test Instances}
+\begin{enumerate}[a.~]
+\item Small Instances
+
+The model we built can process small instance with an optimal solutions as given by the professor. 
+
+\item Instance 0
+
+The best setting for Instance0.xls is: 
+\begin{lstlisting}
+execute {
+    cp.param.Workers = 1;
+    cp.param.TimeLimit = 6; //The number fo demands
+    cp.param.SearchConfiguration = "MultiPoint";
+}
+\end{lstlisting}
+\end{enumerate}
+
+
 
 \end{document}
